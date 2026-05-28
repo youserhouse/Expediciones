@@ -34,3 +34,22 @@ CREATE INDEX IF NOT EXISTS idx_expediciones_fecha      ON expediciones(fecha);
 
 -- 5. Habilitar Realtime en la tabla (para sincronización entre pestañas)
 ALTER PUBLICATION supabase_realtime ADD TABLE expediciones;
+
+-- ============================================================
+--  HISTORIAL DE CIERRES
+--  Guarda un snapshot cada vez que se limpia el tablero
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS historial_cierres (
+  id               uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  cerrado_at       timestamptz DEFAULT now(),
+  total_facturas   integer     DEFAULT 0,
+  total_palets     integer     DEFAULT 0,
+  total_pendientes integer     DEFAULT 0,
+  expediciones     jsonb       DEFAULT '[]'
+);
+
+ALTER TABLE historial_cierres ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "acceso_publico" ON historial_cierres
+  FOR ALL TO anon USING (true) WITH CHECK (true);
