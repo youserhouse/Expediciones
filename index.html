@@ -240,9 +240,12 @@
   .cierre-table td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); }
   .cierre-table tr:last-child td { border-bottom: none; }
   .estado-badge { font-size: .62rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; }
-  .estado-ok        { background: rgba(0,229,160,.12); color: var(--accent); }
-  .estado-tarde     { background: rgba(255,77,109,.12); color: var(--danger); }
-  .estado-pendiente { background: rgba(255,184,48,.12); color: var(--warn); }
+  .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
+  .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
+  .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
+  .estado-completado     { background: rgba(0,229,160,.12); color: var(--accent); }
+  .estado-en_preparacion { background: rgba(0,153,255,.12); color: var(--accent2); }
+  .estado-entrancito     { background: rgba(255,184,48,.12); color: var(--warn); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -317,9 +320,12 @@
     background-repeat:no-repeat; background-position:right 6px center;
   }
   select.ci option { background:#1a1e2a; }
-  select.ci[data-v="pendiente"] { color:var(--warn);   font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="ok"]        { color:var(--accent); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="tarde"]     { color:var(--danger); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="pendiente"]      { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="entrancito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_preparacion"] { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="completado"]     { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
@@ -331,6 +337,13 @@
     cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; justify-content:center;
   }
   .del-btn:hover { border-color:var(--danger); color:var(--danger); background:rgba(255,77,109,.08); }
+  .ci:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; background:var(--surface2) !important; }
+  .hist-del-btn {
+    background:none; border:1px solid var(--danger); color:var(--danger);
+    border-radius:5px; padding:3px 9px; cursor:pointer; font-size:.72rem;
+    opacity:.65; transition:opacity .15s; flex-shrink:0;
+  }
+  .hist-del-btn:hover { opacity:1; }
   .empty-row td { text-align:center; color:var(--muted); font-style:italic; padding:36px; }
   .loading-row td { text-align:center; color:var(--muted); padding:36px; }
   .error-row td { text-align:center; color:var(--danger); padding:36px; font-size:.85rem; }
@@ -444,7 +457,7 @@
       <div class="kpi-extra" id="kpiExtraPendientes"></div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Ubicados</div>
+      <div class="kpi-label">Ubicados Hoy</div>
       <div class="kpi-value" id="kpiHoy">0</div>
       <div class="kpi-sub" id="kpiHoySub">Total Palets − Pendientes</div>
       <div class="kpi-extra" id="kpiExtraUbicados"></div>
@@ -464,7 +477,11 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="hist-btn" onclick="toggleHistorial()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Historial
+          Facturas Anteriores
+        </button>
+        <button class="hist-btn" onclick="toggleHistorialUbicados()" style="border-color:var(--purple);color:var(--purple);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><polyline points="16 2 12 7 8 2"/></svg>
+          Ubicados/Día
         </button>
         <button class="clear-btn" onclick="limpiarPizarra()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
@@ -509,9 +526,8 @@
       <div class="fg full"><label>Observaciones</label><textarea id="fObs" placeholder="Notas..."></textarea></div>
       <div class="fg"><label>Estado</label>
         <select id="fEstado">
-          <option value="pendiente">Pendiente</option>
-          <option value="ok">Completado</option>
-          <option value="tarde">Retrasado</option>
+          <option value="entrancito" selected>Entrancito</option>
+          <option value="en_preparacion">En preparación</option>
         </select>
       </div>
     </div>
@@ -522,15 +538,27 @@
   </div>
 </div>
 
-<!-- HISTORIAL PANEL -->
+<!-- HISTORIAL FACTURAS PANEL -->
 <div class="hist-overlay" id="histOverlay" onclick="toggleHistorial()"></div>
 <div class="historial-panel" id="historialPanel">
   <div class="hist-header">
-    <span>Historial de Cierres</span>
+    <span>Historial de Facturas Anteriores</span>
     <button onclick="toggleHistorial()">✕</button>
   </div>
   <div class="hist-list" id="histList">
-    <div class="hist-empty">Sin cierres registrados</div>
+    <div class="hist-empty">Sin registros</div>
+  </div>
+</div>
+
+<!-- HISTORIAL UBICADOS POR DÍA PANEL -->
+<div class="hist-overlay" id="histUbicOverlay" onclick="toggleHistorialUbicados()"></div>
+<div class="historial-panel" id="histUbicPanel">
+  <div class="hist-header">
+    <span>Historial Ubicados por Día</span>
+    <button onclick="toggleHistorialUbicados()">✕</button>
+  </div>
+  <div class="hist-list" id="histUbicList">
+    <div class="hist-empty">Sin registros</div>
   </div>
 </div>
 
@@ -544,6 +572,9 @@
   const todayISO = new Date().toISOString().slice(0, 10);
   const now = new Date();
   let data = [];
+  let ubicadosHoy = 0;
+  let histLoaded = false;
+  let histUbicLoaded = false;
 
   // ===== AUTH =====
   sb.auth.onAuthStateChange((event, session) => {
@@ -576,11 +607,8 @@
     if (error) { errEl.textContent = 'Email o contraseña incorrectos.'; errEl.classList.add('show'); }
   }
 
-  async function doLogout() {
-    await sb.auth.signOut();
-  }
+  async function doLogout() { await sb.auth.signOut(); }
 
-  // Enter key en login
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !document.getElementById('loginScreen').classList.contains('hidden')) doLogin();
   });
@@ -596,39 +624,41 @@
       return;
     }
     data = rows || [];
+    await loadUbicadosHoy();
     render();
+  }
+
+  async function loadUbicadosHoy() {
+    const { data: row } = await sb
+      .from('historial_ubicados_dia').select('palets_ubicados').eq('fecha', todayISO).single();
+    ubicadosHoy = row?.palets_ubicados || 0;
   }
 
   function updateKPIs() {
     const totalPalets     = data.reduce((s,r) => s + (Number(r.palets)   || 0), 0);
     const totalPendientes = data.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
-    const ubicados        = Math.max(0, totalPalets - totalPendientes);
-    const nOk             = data.filter(r => r.estado === 'ok').length;
-    const nTarde          = data.filter(r => r.estado === 'tarde').length;
-    const nPend           = data.filter(r => r.estado === 'pendiente').length;
+    const nEntrancito     = data.filter(r => r.estado === 'entrancito').length;
+    const nEnPrep         = data.filter(r => r.estado === 'en_preparacion').length;
 
     document.getElementById('kpiFacturas').textContent   = data.length;
     document.getElementById('kpiPendientes').textContent = totalPendientes;
-    document.getElementById('kpiHoy').textContent        = ubicados;
+    document.getElementById('kpiHoy').textContent        = ubicadosHoy;
     document.getElementById('kpiPalets').textContent     = totalPalets;
-    document.getElementById('kpiHoySub').textContent     = 'Total Palets − Pendientes';
+    document.getElementById('kpiHoySub').textContent     = 'Palés ubicados hoy';
 
     const pctPend = totalPalets > 0 ? Math.round((totalPendientes / totalPalets) * 100) : 0;
-    const pctUbic = totalPalets > 0 ? Math.round((ubicados / totalPalets) * 100) : 0;
     const avg     = data.length > 0 ? (totalPalets / data.length).toFixed(1) : '0';
 
     document.getElementById('kpiExtraFacturas').innerHTML =
-      `<span><span>✓ Completadas</span><b>${nOk}</b></span>` +
-      `<span><span>⏳ Pendientes</span><b>${nPend}</b></span>` +
-      `<span><span>⚠ Retrasadas</span><b>${nTarde}</b></span>`;
+      `<span><span>🚚 Entrancito</span><b>${nEntrancito}</b></span>` +
+      `<span><span>🔧 En preparación</span><b>${nEnPrep}</b></span>`;
 
     document.getElementById('kpiExtraPendientes').innerHTML =
       `<span><span>% sobre total palets</span><b>${pctPend}%</b></span>` +
       `<span><span>Palets sin ubicar</span><b>${totalPendientes}</b></span>`;
 
     document.getElementById('kpiExtraUbicados').innerHTML =
-      `<span><span>% ubicados</span><b>${pctUbic}%</b></span>` +
-      `<span><span>Palets en almacén</span><b>${ubicados}</b></span>`;
+      `<span><span>Palés ubicados hoy</span><b>${ubicadosHoy}</b></span>`;
 
     document.getElementById('kpiExtraPalets').innerHTML =
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
@@ -641,7 +671,8 @@
     const tbody = document.getElementById('tableBody');
     if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Sin expediciones registradas</td></tr>'; return; }
     tbody.innerHTML = data.map((r,i) => {
-      const pct = Math.min(100, ((Number(r.palets)||0)/80)*100);
+      const pct    = Math.min(100, ((Number(r.palets)||0)/80)*100);
+      const locked = r.estado === 'entrancito';
       return `<tr>
         <td><input type="date" class="ci" value="${r.fecha||''}" onchange="updAndSave(${i},'fecha',this.value)"></td>
         <td><input type="text" class="ci ci-dest" value="${esc(r.dest)}"
@@ -652,22 +683,25 @@
         <td>
           <div class="pw">
             <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
+              ${locked?'disabled':''}
               oninput="upd(${i},'palets',this.value);updBar(${i},this.value)"
               onblur="save(${i},'palets',this.value)">
             <div class="pb-wrap"><div class="pb-bar" id="bar-${i}" style="width:${pct}%"></div></div>
           </div>
         </td>
         <td><input type="number" class="ci ci-num" value="${r.p_ubicar||''}" min="0"
-          oninput="upd(${i},'p_ubicar',this.value)" onblur="save(${i},'p_ubicar',this.value)"></td>
+          ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
+          oninput="upd(${i},'p_ubicar',this.value)"
+          onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value"></td>
         <td><input type="text" class="ci" style="max-width:72px" value="${esc(r.calle)}"
           oninput="upd(${i},'calle',this.value)" onblur="save(${i},'calle',this.value)"></td>
         <td><input type="text" class="ci" value="${esc(r.obs)}" placeholder="—"
           oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></td>
         <td>
-          <select class="ci" data-v="${r.estado}" onchange="updAndSave(${i},'estado',this.value);this.dataset.v=this.value">
-            <option value="pendiente" ${r.estado==='pendiente'?'selected':''}>Pendiente</option>
-            <option value="ok"        ${r.estado==='ok'       ?'selected':''}>Completado</option>
-            <option value="tarde"     ${r.estado==='tarde'    ?'selected':''}>Retrasado</option>
+          <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
+            <option value="entrancito"     ${r.estado==='entrancito'    ?'selected':''}>Entrancito</option>
+            <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
+            <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
           </select>
         </td>
         <td><button class="del-btn" onclick="del(${i})">✕</button></td>
@@ -675,13 +709,23 @@
     }).join('');
   }
 
-  function statusLabel(s){ return s==='ok'?'✓ Completado':s==='tarde'?'⚠ Retrasado':'⏳ Pendiente'; }
-  function statusColor(s){ return s==='ok'?'var(--accent)':s==='tarde'?'var(--danger)':'var(--warn)'; }
+  function statusLabel(s) {
+    if (s==='completado'||s==='ok') return '✓ Completado';
+    if (s==='en_preparacion'||s==='tarde') return '🔧 En preparación';
+    return '🚚 Entrancito';
+  }
+  function statusColor(s) {
+    if (s==='completado'||s==='ok') return 'var(--accent)';
+    if (s==='en_preparacion'||s==='tarde') return 'var(--accent2)';
+    return 'var(--warn)';
+  }
 
   function renderMobile() {
     const mc = document.getElementById('mobileCards');
     if (!data.length) { mc.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">Sin expediciones</div>'; return; }
-    mc.innerHTML = data.map((r,i) => `
+    mc.innerHTML = data.map((r,i) => {
+      const locked = r.estado === 'entrancito';
+      return `
       <div class="m-card">
         <div class="m-card-head">
           <span class="m-dest">${esc(r.dest)||'—'}</span>
@@ -694,10 +738,13 @@
               style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>
           <div class="m-field"><label>Total Palets</label>
             <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
+              ${locked?'disabled':''}
               oninput="upd(${i},'palets',this.value);updBar(${i},this.value)" onblur="save(${i},'palets',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>P. por ubicar</label>
             <input type="number" class="ci ci-num" value="${r.p_ubicar||''}" min="0"
-              oninput="upd(${i},'p_ubicar',this.value)" onblur="save(${i},'p_ubicar',this.value)" style="max-width:80px;"></div>
+              ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
+              oninput="upd(${i},'p_ubicar',this.value)"
+              onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value" style="max-width:80px;"></div>
           <div class="m-field"><label>Calle</label>
             <input type="text" class="ci" value="${esc(r.calle)}" placeholder="—"
               oninput="upd(${i},'calle',this.value)" onblur="save(${i},'calle',this.value)" style="max-width:80px;"></div>
@@ -705,16 +752,17 @@
             <input type="text" class="ci" value="${esc(r.obs)}" placeholder="—"
               oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></div>
           <div class="m-field" style="grid-column:1/-1"><label>Estado</label>
-            <select class="ci" data-v="${r.estado}" onchange="updAndSave(${i},'estado',this.value);this.dataset.v=this.value">
-              <option value="pendiente" ${r.estado==='pendiente'?'selected':''}>Pendiente</option>
-              <option value="ok"        ${r.estado==='ok'       ?'selected':''}>Completado</option>
-              <option value="tarde"     ${r.estado==='tarde'    ?'selected':''}>Retrasado</option>
+            <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
+              <option value="entrancito"     ${r.estado==='entrancito'    ?'selected':''}>Entrancito</option>
+              <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
+              <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
             </select></div>
         </div>
         <div class="m-actions">
           <button class="del-btn" onclick="del(${i})" style="width:auto;padding:5px 14px;font-size:.78rem;">✕ Eliminar</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function upd(i, key, val) {
@@ -727,6 +775,52 @@
     if (error) console.error('Error al guardar:', key, error.message);
   }
   async function updAndSave(i, key, val) { upd(i,key,val); await save(i,key,val); }
+
+  async function handleEstadoChange(i, val, selectEl) {
+    if (val === 'completado') {
+      await archivarYEliminar(i);
+    } else {
+      if (selectEl) selectEl.dataset.v = val;
+      await updAndSave(i, 'estado', val);
+    }
+  }
+
+  async function archivarYEliminar(i) {
+    const row     = data[i];
+    const pUbicar = Number(row.p_ubicar) || 0;
+    const { error: insertErr } = await sb.from('historial_cierres').insert({
+      total_facturas:   1,
+      total_palets:     Number(row.palets) || 0,
+      total_pendientes: pUbicar,
+      expediciones:     [{ ...row, estado: 'completado' }],
+    });
+    if (insertErr) { alert('Error al archivar: ' + insertErr.message); return; }
+    if (pUbicar > 0) await registrarUbicadosHoy(pUbicar);
+    const id = row.id;
+    data.splice(i, 1);
+    render();
+    const { error: delErr } = await sb.from('expediciones').delete().eq('id', id);
+    if (delErr) { alert('Error al eliminar.'); loadData(); }
+    histLoaded = false;
+  }
+
+  async function saveUbicados(i, newVal, oldVal) {
+    const delta = (Number(oldVal)||0) - (Number(newVal)||0);
+    if (delta > 0) await registrarUbicadosHoy(delta);
+    await save(i, 'p_ubicar', newVal);
+  }
+
+  async function registrarUbicadosHoy(delta) {
+    const { data: existing } = await sb
+      .from('historial_ubicados_dia').select('palets_ubicados').eq('fecha', todayISO).single();
+    const newCount = (existing?.palets_ubicados || 0) + delta;
+    await sb.from('historial_ubicados_dia')
+      .upsert({ fecha: todayISO, palets_ubicados: newCount }, { onConflict: 'fecha' });
+    ubicadosHoy = newCount;
+    document.getElementById('kpiHoy').textContent = newCount;
+    histUbicLoaded = false;
+  }
+
   function updBar(i, val) {
     const b = document.getElementById('bar-'+i);
     if (b) b.style.width = Math.min(100,((Number(val)||0)/80)*100)+'%';
@@ -747,7 +841,7 @@
     document.getElementById('fPUbicar').value = '';
     document.getElementById('fCalle').value   = '';
     document.getElementById('fObs').value     = '';
-    document.getElementById('fEstado').value  = 'pendiente';
+    document.getElementById('fEstado').value  = 'entrancito';
     document.getElementById('modalOverlay').classList.add('open');
     document.getElementById('fDest').focus();
   }
@@ -779,9 +873,7 @@
       if (!active||!['INPUT','SELECT','TEXTAREA'].includes(active.tagName)) loadData();
     }).subscribe();
 
-  // ===== HISTORIAL =====
-  let histLoaded = false;
-
+  // ===== HISTORIAL DE FACTURAS ANTERIORES =====
   async function limpiarPizarra() {
     if (!data.length) { alert('El tablero ya está vacío.'); return; }
     const totalPalets     = data.reduce((s,r) => s + (Number(r.palets)   || 0), 0);
@@ -813,6 +905,8 @@
   }
 
   function toggleHistorial() {
+    document.getElementById('histUbicPanel').classList.remove('open');
+    document.getElementById('histUbicOverlay').classList.remove('open');
     const panel   = document.getElementById('historialPanel');
     const overlay = document.getElementById('histOverlay');
     const isOpen  = panel.classList.toggle('open');
@@ -827,7 +921,7 @@
       .from('historial_cierres').select('*').order('cerrado_at', { ascending: false }).limit(50);
     if (error) { list.innerHTML = `<div class="hist-empty" style="color:var(--danger)">Error: ${error.message}</div>`; return; }
     histLoaded = true;
-    if (!cierres.length) { list.innerHTML = '<div class="hist-empty">Sin cierres registrados</div>'; return; }
+    if (!cierres.length) { list.innerHTML = '<div class="hist-empty">Sin facturas anteriores</div>'; return; }
     list.innerHTML = cierres.map(c => {
       const d     = new Date(c.cerrado_at);
       const fecha = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -839,7 +933,7 @@
           <td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;">${esc(e.factura) || '—'}</td>
           <td style="text-align:center;">${e.palets || 0}</td>
           <td style="text-align:center;">${e.p_ubicar || 0}</td>
-          <td><span class="estado-badge estado-${e.estado || 'pendiente'}">${e.estado || 'pendiente'}</span></td>
+          <td><span class="estado-badge estado-${e.estado||'entrancito'}">${statusLabel(e.estado||'entrancito')}</span></td>
         </tr>`
       ).join('');
       return `
@@ -853,7 +947,10 @@
                 <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
-            <span class="cierre-chevron">▼</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="hist-del-btn" onclick="event.stopPropagation();deleteHistorialItem('${c.id}')">🗑 Eliminar</button>
+              <span class="cierre-chevron">▼</span>
+            </div>
           </div>
           <div class="cierre-detail">
             <table class="cierre-table">
@@ -872,6 +969,54 @@
 
   function toggleCierreDetail(id) {
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
+  }
+
+  async function deleteHistorialItem(id) {
+    if (!confirm('¿Eliminar este registro del historial?')) return;
+    const { error } = await sb.from('historial_cierres').delete().eq('id', id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    document.getElementById('cierre-' + id)?.remove();
+    const list = document.getElementById('histList');
+    if (!list.querySelector('.cierre-item')) {
+      list.innerHTML = '<div class="hist-empty">Sin facturas anteriores</div>';
+    }
+  }
+
+  // ===== HISTORIAL UBICADOS POR DÍA =====
+  function toggleHistorialUbicados() {
+    document.getElementById('historialPanel').classList.remove('open');
+    document.getElementById('histOverlay').classList.remove('open');
+    const panel   = document.getElementById('histUbicPanel');
+    const overlay = document.getElementById('histUbicOverlay');
+    const isOpen  = panel.classList.toggle('open');
+    overlay.classList.toggle('open', isOpen);
+    if (isOpen && !histUbicLoaded) loadHistorialUbicados();
+  }
+
+  async function loadHistorialUbicados() {
+    const list = document.getElementById('histUbicList');
+    list.innerHTML = '<div class="hist-empty"><span class="spinner"></span> Cargando…</div>';
+    const { data: rows, error } = await sb
+      .from('historial_ubicados_dia').select('*').order('fecha', { ascending: false }).limit(90);
+    if (error) { list.innerHTML = `<div class="hist-empty" style="color:var(--danger)">Error: ${error.message}</div>`; return; }
+    histUbicLoaded = true;
+    if (!rows.length) { list.innerHTML = '<div class="hist-empty">Sin registros de ubicados</div>'; return; }
+    list.innerHTML = rows.map(r => {
+      const isToday  = r.fecha === todayISO;
+      const d        = new Date(r.fecha + 'T12:00:00');
+      const fechaStr = d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+      return `
+        <div class="cierre-item">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
+            <div class="cierre-date" style="${isToday?'color:var(--accent);font-weight:600;':''}">
+              ${isToday?'Hoy · ':''}${fechaStr}
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--purple);line-height:1;">
+              ${r.palets_ubicados}<span style="font-family:'DM Sans',sans-serif;font-size:.65rem;color:var(--muted);"> palés</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   // ===== UTILS =====
