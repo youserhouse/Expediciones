@@ -245,7 +245,7 @@
   .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
   .estado-completado     { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-en_preparacion { background: rgba(0,153,255,.12); color: var(--accent2); }
-  .estado-entrancito     { background: rgba(255,184,48,.12); color: var(--warn); }
+  .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -323,7 +323,7 @@
   select.ci[data-v="pendiente"]      { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="entrancito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="en_preparacion"] { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="completado"]     { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
@@ -526,7 +526,7 @@
       <div class="fg full"><label>Observaciones</label><textarea id="fObs" placeholder="Notas..."></textarea></div>
       <div class="fg"><label>Estado</label>
         <select id="fEstado">
-          <option value="entrancito" selected>Entrancito</option>
+          <option value="en_transito" selected>En tránsito</option>
           <option value="en_preparacion">En preparación</option>
         </select>
       </div>
@@ -637,7 +637,7 @@
   function updateKPIs() {
     const totalPalets     = data.reduce((s,r) => s + (Number(r.palets)   || 0), 0);
     const totalPendientes = data.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
-    const nEntrancito     = data.filter(r => r.estado === 'entrancito').length;
+    const nEn tránsito     = data.filter(r => r.estado === 'en_transito').length;
     const nEnPrep         = data.filter(r => r.estado === 'en_preparacion').length;
 
     document.getElementById('kpiFacturas').textContent   = data.length;
@@ -650,7 +650,7 @@
     const avg     = data.length > 0 ? (totalPalets / data.length).toFixed(1) : '0';
 
     document.getElementById('kpiExtraFacturas').innerHTML =
-      `<span><span>🚚 Entrancito</span><b>${nEntrancito}</b></span>` +
+      `<span><span>🚚 En tránsito</span><b>${nEn tránsito}</b></span>` +
       `<span><span>🔧 En preparación</span><b>${nEnPrep}</b></span>`;
 
     document.getElementById('kpiExtraPendientes').innerHTML =
@@ -672,7 +672,7 @@
     if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Sin expediciones registradas</td></tr>'; return; }
     tbody.innerHTML = data.map((r,i) => {
       const pct    = Math.min(100, ((Number(r.palets)||0)/80)*100);
-      const locked = r.estado === 'entrancito';
+      const locked = r.estado === 'en_transito';
       return `<tr>
         <td><input type="date" class="ci" value="${r.fecha||''}" onchange="updAndSave(${i},'fecha',this.value)"></td>
         <td><input type="text" class="ci ci-dest" value="${esc(r.dest)}"
@@ -699,7 +699,7 @@
           oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></td>
         <td>
           <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
-            <option value="entrancito"     ${r.estado==='entrancito'    ?'selected':''}>Entrancito</option>
+            <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
             <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
             <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
           </select>
@@ -712,7 +712,7 @@
   function statusLabel(s) {
     if (s==='completado'||s==='ok') return '✓ Completado';
     if (s==='en_preparacion'||s==='tarde') return '🔧 En preparación';
-    return '🚚 Entrancito';
+    return '🚚 En tránsito';
   }
   function statusColor(s) {
     if (s==='completado'||s==='ok') return 'var(--accent)';
@@ -724,7 +724,7 @@
     const mc = document.getElementById('mobileCards');
     if (!data.length) { mc.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">Sin expediciones</div>'; return; }
     mc.innerHTML = data.map((r,i) => {
-      const locked = r.estado === 'entrancito';
+      const locked = r.estado === 'en_transito';
       return `
       <div class="m-card">
         <div class="m-card-head">
@@ -753,7 +753,7 @@
               oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></div>
           <div class="m-field" style="grid-column:1/-1"><label>Estado</label>
             <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
-              <option value="entrancito"     ${r.estado==='entrancito'    ?'selected':''}>Entrancito</option>
+              <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
               <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
               <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
             </select></div>
@@ -841,7 +841,7 @@
     document.getElementById('fPUbicar').value = '';
     document.getElementById('fCalle').value   = '';
     document.getElementById('fObs').value     = '';
-    document.getElementById('fEstado').value  = 'entrancito';
+    document.getElementById('fEstado').value  = 'en_transito';
     document.getElementById('modalOverlay').classList.add('open');
     document.getElementById('fDest').focus();
   }
@@ -933,7 +933,7 @@
           <td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;">${esc(e.factura) || '—'}</td>
           <td style="text-align:center;">${e.palets || 0}</td>
           <td style="text-align:center;">${e.p_ubicar || 0}</td>
-          <td><span class="estado-badge estado-${e.estado||'entrancito'}">${statusLabel(e.estado||'entrancito')}</span></td>
+          <td><span class="estado-badge estado-${e.estado||'en_transito'}">${statusLabel(e.estado||'en_transito')}</span></td>
         </tr>`
       ).join('');
       return `
