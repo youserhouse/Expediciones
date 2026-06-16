@@ -637,7 +637,7 @@
   function updateKPIs() {
     const totalPalets     = data.reduce((s,r) => s + (Number(r.palets)   || 0), 0);
     const totalPendientes = data.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
-    const nEn tránsito     = data.filter(r => r.estado === 'en_transito').length;
+    const nEnTransito     = data.filter(r => r.estado === 'en_transito').length;
     const nEnPrep         = data.filter(r => r.estado === 'en_preparacion').length;
 
     document.getElementById('kpiFacturas').textContent   = data.length;
@@ -650,7 +650,7 @@
     const avg     = data.length > 0 ? (totalPalets / data.length).toFixed(1) : '0';
 
     document.getElementById('kpiExtraFacturas').innerHTML =
-      `<span><span>🚚 En tránsito</span><b>${nEn tránsito}</b></span>` +
+      `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
       `<span><span>🔧 En preparación</span><b>${nEnPrep}</b></span>`;
 
     document.getElementById('kpiExtraPendientes').innerHTML =
