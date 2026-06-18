@@ -500,6 +500,10 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nueva entrada
         </button>
+        <button class="add-btn" id="exportBtn" onclick="exportarExcel()" style="background:var(--blue);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 19h14"/></svg>
+          Exportar Excel
+        </button>
       </div>
     </div>
     <div class="desktop-table">
@@ -1030,6 +1034,20 @@
 
   // ===== UTILS =====
   function esc(v){ return (v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function exportarExcel() {
+    const headers = ['Fecha', 'Destinatario', 'Factura', 'Total Palets', 'Observaciones'];
+    const csvEscape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = data.map(r => [r.fecha, r.dest, r.factura, r.palets, r.obs].map(csvEscape).join(';'));
+    const csv = '﻿' + [headers.join(';'), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expediciones_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   document.getElementById('modalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
   document.getElementById('currentDate').textContent =
