@@ -1051,9 +1051,10 @@
   function esc(v){ return (v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   function exportarExcel() {
-    const headers = ['Fecha', 'Destinatario', 'Factura', 'Total Palets', 'Observaciones'];
+    const headers = ['Fecha Registro/Facturas', 'Destinatario', 'Factura', 'Total Palets', 'Observaciones', 'Estado de la factura'];
     const csvEscape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = data.map(r => [r.fecha, r.dest, r.factura, r.palets, r.obs].map(csvEscape).join(';'));
+    const estadoPlano = (s) => statusLabel(s).replace(/^\S+\s/, '');
+    const rows = data.map(r => [r.fecha, r.dest, r.factura, r.palets, r.obs, estadoPlano(r.estado)].map(csvEscape).join(';'));
     const csv = '﻿' + [headers.join(';'), ...rows].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
