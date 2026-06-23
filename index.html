@@ -508,7 +508,7 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nueva entrada
         </button>
-        <button class="add-btn" id="exportBtn" onclick="exportarExcel()" style="background:var(--accent2);">
+        <button class="add-btn" id="exportBtn" onclick="openExportChoice()" style="background:var(--accent2);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 19h14"/></svg>
           Exportar Excel
         </button>
@@ -556,6 +556,19 @@
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-save" id="btnSave" onclick="saveNew()">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- EXPORT CHOICE MODAL -->
+<div class="modal-overlay" id="exportChoiceOverlay">
+  <div class="modal" style="max-width:360px;">
+    <h2>Exportar Excel</h2>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:18px;">¿Qué desea exportar?</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+      <button class="btn-save" style="width:100%;" onclick="exportarExcel('pizarra')">Pizarra actual</button>
+      <button class="btn-save" style="width:100%;background:var(--accent2);" onclick="exportarExcel('historial')">Facturas Anteriores</button>
+    </div>
+    <button class="btn-cancel" style="width:100%;" onclick="closeExportChoice()">Cancelar</button>
   </div>
 </div>
 
@@ -1051,10 +1064,23 @@
   // ===== UTILS =====
   function esc(v){ return (v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  async function exportarExcel() {
+  function openExportChoice() { document.getElementById('exportChoiceOverlay').classList.add('open'); }
+  function closeExportChoice() { document.getElementById('exportChoiceOverlay').classList.remove('open'); }
+
+  async function exportarExcel(origen) {
+    closeExportChoice();
+    let rows = data;
+    if (origen === 'historial') {
+      const { data: cierres, error } = await sb
+        .from('historial_cierres').select('expediciones').order('cerrado_at', { ascending: false });
+      if (error) { alert('Error al cargar facturas anteriores: ' + error.message); return; }
+      rows = (cierres || []).flatMap(c => c.expediciones || []);
+    }
+    if (!rows.length) { alert('No hay datos para exportar.'); return; }
+
     const estadoPlano = (s) => statusLabel(s).replace(/^\S+\s/, '');
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Expediciones');
+    const ws = wb.addWorksheet(origen === 'historial' ? 'Facturas Anteriores' : 'Expediciones');
 
     ws.columns = [
       { header: 'Fecha Registro/Facturas', key: 'fecha' },
@@ -1065,7 +1091,7 @@
       { header: 'Estado de la factura',    key: 'estado' },
     ];
 
-    data.forEach(r => ws.addRow({
+    rows.forEach(r => ws.addRow({
       fecha: r.fecha, dest: r.dest, factura: r.factura,
       palets: r.palets, obs: r.obs, estado: estadoPlano(r.estado),
     }));
@@ -1101,12 +1127,14 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expediciones_${new Date().toISOString().slice(0,10)}.xlsx`;
+    const prefix = origen === 'historial' ? 'facturas_anteriores' : 'expediciones';
+    a.download = `${prefix}_${new Date().toISOString().slice(0,10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   document.getElementById('modalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
+  document.getElementById('exportChoiceOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeExportChoice(); });
   document.getElementById('currentDate').textContent =
     now.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 </script>
