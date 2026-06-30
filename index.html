@@ -623,6 +623,7 @@
   const now = new Date();
   let data = [];
   let ubicadosHoy = 0;
+  let notaHoy = '';
   let histLoaded = false;
   let histUbicLoaded = false;
 
@@ -680,8 +681,15 @@
 
   async function loadUbicadosHoy() {
     const { data: row } = await sb
-      .from('historial_ubicados_dia').select('palets_ubicados').eq('fecha', todayISO).single();
+      .from('historial_ubicados_dia').select('palets_ubicados, nota').eq('fecha', todayISO).single();
     ubicadosHoy = row?.palets_ubicados || 0;
+    notaHoy = row?.nota || '';
+  }
+
+  function renderKpiExtraUbicados() {
+    document.getElementById('kpiExtraUbicados').innerHTML = notaHoy
+      ? `<div style="font-style:italic;line-height:1.4;">"${esc(notaHoy)}"</div>`
+      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`;
   }
 
   function updateKPIs() {
@@ -712,8 +720,7 @@
       `<span><span>% sobre total palets</span><b>${pctPend}%</b></span>` +
       `<span><span>Palets sin ubicar</span><b>${totalPendientes}</b></span>`;
 
-    document.getElementById('kpiExtraUbicados').innerHTML =
-      `<span><span>Palés ubicados hoy</span><b>${ubicadosHoy}</b></span>`;
+    renderKpiExtraUbicados();
 
     document.getElementById('kpiExtraPalets').innerHTML =
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
@@ -1123,11 +1130,13 @@
     nota.dataset.orig = notaVal || '';
     palets.disabled = true;
     nota.disabled = true;
-    card.querySelector('.edit-btn').style.display = 'inline-flex';
+    card.querySelector('.edit-btn').title = 'Editar';
     card.querySelector('.save-btn').style.display = 'none';
     if (fecha === todayISO) {
       ubicadosHoy = paletsVal;
+      notaHoy = notaVal || '';
       document.getElementById('kpiHoy').textContent = ubicadosHoy;
+      renderKpiExtraUbicados();
     }
   }
 
@@ -1142,7 +1151,9 @@
     }
     if (fecha === todayISO) {
       ubicadosHoy = 0;
+      notaHoy = '';
       document.getElementById('kpiHoy').textContent = 0;
+      renderKpiExtraUbicados();
     }
   }
 
