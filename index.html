@@ -333,6 +333,8 @@
     color:var(--warn) !important; max-width:60px; text-align:center;
   }
   .ci-palets:focus { color:var(--warn) !important; }
+  .ci-nota { font-size:.75rem !important; color:var(--muted) !important; font-style:italic; }
+  .ci-nota::placeholder { color:var(--muted); opacity:.5; font-style:italic; }
   select.ci { cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a6180' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 6px center;
@@ -1055,17 +1057,49 @@
       const d        = new Date(r.fecha + 'T12:00:00');
       const fechaStr = d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
       return `
-        <div class="cierre-item">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
+        <div class="cierre-item" id="histUbic-${r.id}">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px;">
             <div class="cierre-date" style="${isToday?'color:var(--accent);font-weight:600;':''}">
               ${isToday?'Hoy · ':''}${fechaStr}
             </div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--purple);line-height:1;">
-              ${r.palets_ubicados}<span style="font-family:'DM Sans',sans-serif;font-size:.65rem;color:var(--muted);"> palés</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input class="ci ci-palets" type="number" min="0" value="${r.palets_ubicados}"
+                onblur="saveHistUbic('${r.id}', 'palets_ubicados', this.value, '${r.fecha}')">
+              <span style="font-family:'DM Sans',sans-serif;font-size:.65rem;color:var(--muted);">palés</span>
             </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:0 16px 12px;">
+            <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(r.nota)}"
+              onblur="saveHistUbic('${r.id}', 'nota', this.value, '${r.fecha}')" style="flex:1;">
+            <button class="hist-del-btn" onclick="deleteHistUbic('${r.id}', '${r.fecha}')">🗑 Eliminar</button>
           </div>
         </div>`;
     }).join('');
+  }
+
+  async function saveHistUbic(id, key, val, fecha) {
+    const payload = { [key]: key === 'palets_ubicados' ? (Number(val) || 0) : (val === '' ? null : val) };
+    const { error } = await sb.from('historial_ubicados_dia').update(payload).eq('id', id);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    if (key === 'palets_ubicados' && fecha === todayISO) {
+      ubicadosHoy = payload.palets_ubicados;
+      document.getElementById('kpiHoy').textContent = ubicadosHoy;
+    }
+  }
+
+  async function deleteHistUbic(id, fecha) {
+    if (!confirm('¿Eliminar este registro de ubicados?')) return;
+    const { error } = await sb.from('historial_ubicados_dia').delete().eq('id', id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    document.getElementById('histUbic-' + id)?.remove();
+    const list = document.getElementById('histUbicList');
+    if (!list.querySelector('.cierre-item')) {
+      list.innerHTML = '<div class="hist-empty">Sin registros de ubicados</div>';
+    }
+    if (fecha === todayISO) {
+      ubicadosHoy = 0;
+      document.getElementById('kpiHoy').textContent = 0;
+    }
   }
 
   // ===== UTILS =====
