@@ -358,18 +358,13 @@
   }
   .del-btn:hover { border-color:var(--danger); color:var(--danger); background:rgba(255,77,109,.08); }
   .ci:disabled { opacity:.55; cursor:not-allowed; background:transparent !important; border-color:transparent !important; }
-  .edit-btn {
-    background:none; border:1px solid transparent; color:var(--muted);
-    width:28px; height:28px; border-radius:6px; font-size:.78rem; flex-shrink:0;
+  .edit-btn, .save-btn {
+    background:rgba(0,229,160,.06); border:1.5px solid var(--accent); color:var(--accent);
+    width:32px; height:32px; border-radius:8px; flex-shrink:0;
     cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; justify-content:center;
   }
-  .edit-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.08); }
-  .save-btn {
-    background:rgba(0,229,160,.1); border:1px solid var(--accent); color:var(--accent);
-    width:28px; height:28px; border-radius:6px; font-size:.72rem; flex-shrink:0;
-    cursor:pointer; transition:all .15s; align-items:center; justify-content:center;
-  }
-  .save-btn:hover { background:rgba(0,229,160,.2); }
+  .edit-btn:hover, .save-btn:hover { background:rgba(0,229,160,.2); }
+  .edit-btn svg, .save-btn svg { width:15px; height:15px; }
   .hist-del-btn {
     background:none; border:1px solid var(--danger); color:var(--danger);
     border-radius:5px; padding:3px 9px; cursor:pointer; font-size:.72rem;
@@ -1046,6 +1041,9 @@
   }
 
   // ===== HISTORIAL UBICADOS POR DÍA =====
+  const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>';
+  const ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>';
+
   function toggleHistorialUbicados() {
     document.getElementById('historialPanel').classList.remove('open');
     document.getElementById('histOverlay').classList.remove('open');
@@ -1081,8 +1079,8 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;padding:0 16px 12px;">
             <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(r.nota)}" data-orig="${esc(r.nota)}" style="flex:1;" disabled>
-            <button class="edit-btn" onclick="toggleEditHistUbic('${r.id}')" title="Editar">✏️</button>
-            <button class="save-btn" onclick="saveHistUbic('${r.id}', '${r.fecha}')" title="Guardar" style="display:none;">💾</button>
+            <button class="edit-btn" onclick="toggleEditHistUbic('${r.id}')" title="Editar">${ICON_PENCIL}</button>
+            <button class="save-btn" onclick="saveHistUbic('${r.id}', '${r.fecha}')" title="Guardar" style="display:none;">${ICON_SAVE}</button>
             <button class="del-btn" onclick="deleteHistUbic('${r.id}', '${r.fecha}')" title="Eliminar">✕</button>
           </div>
         </div>`;
