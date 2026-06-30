@@ -621,6 +621,8 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const todayISO = new Date().toISOString().slice(0, 10);
   const now = new Date();
+  const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>';
+  const ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>';
   let data = [];
   let ubicadosHoy = 0;
   let notaHoy = '';
@@ -738,13 +740,13 @@
     tbody.innerHTML = data.map((r,i) => {
       const pct    = Math.min(100, ((Number(r.palets)||0)/80)*100);
       const locked = r.estado === 'en_transito';
-      return `<tr>
-        <td><input type="date" class="ci" value="${r.fecha||''}" onchange="updAndSave(${i},'fecha',this.value)"></td>
-        <td><input type="text" class="ci ci-dest" value="${esc(r.dest)}"
-          oninput="upd(${i},'dest',this.value.toUpperCase());this.value=this.value.toUpperCase()"
-          onblur="save(${i},'dest',this.value)"></td>
-        <td><input type="text" class="ci ci-fact" value="${esc(r.factura)}"
-          oninput="upd(${i},'factura',this.value)" onblur="save(${i},'factura',this.value)"></td>
+      return `<tr id="exp-row-${i}">
+        <td><input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
+          onchange="upd(${i},'fecha',this.value)"></td>
+        <td><input type="text" class="ci ci-dest" value="${esc(r.dest)}" data-orig="${esc(r.dest)}" disabled
+          oninput="upd(${i},'dest',this.value.toUpperCase());this.value=this.value.toUpperCase()"></td>
+        <td><input type="text" class="ci ci-fact" value="${esc(r.factura)}" data-orig="${esc(r.factura)}" disabled
+          oninput="upd(${i},'factura',this.value)"></td>
         <td>
           <div class="pw">
             <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
@@ -758,10 +760,10 @@
           ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
           oninput="upd(${i},'p_ubicar',this.value)"
           onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value"></td>
-        <td><input type="text" class="ci" style="max-width:72px" value="${esc(r.calle)}"
-          oninput="upd(${i},'calle',this.value)" onblur="save(${i},'calle',this.value)"></td>
-        <td><input type="text" class="ci" value="${esc(r.obs)}" placeholder="—"
-          oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></td>
+        <td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
+          oninput="upd(${i},'calle',this.value)"></td>
+        <td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
+          oninput="upd(${i},'obs',this.value)"></td>
         <td>
           <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
             <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
@@ -769,7 +771,11 @@
             <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
           </select>
         </td>
-        <td><button class="del-btn" onclick="del(${i})">✕</button></td>
+        <td style="display:flex;gap:4px;align-items:center;justify-content:center;">
+          <button class="edit-btn" onclick="toggleEditRow(${i})" title="Editar">${ICON_PENCIL}</button>
+          <button class="save-btn" onclick="saveRow(${i})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
+          <button class="del-btn" onclick="del(${i})">✕</button>
+        </td>
       </tr>`;
     }).join('');
   }
@@ -791,7 +797,7 @@
     mc.innerHTML = data.map((r,i) => {
       const locked = r.estado === 'en_transito';
       return `
-      <div class="m-card">
+      <div class="m-card" id="exp-mrow-${i}">
         <div class="m-card-head">
           <span class="m-dest">${esc(r.dest)||'—'}</span>
           <span style="font-size:.7rem;color:${statusColor(r.estado)};font-weight:600;">${statusLabel(r.estado)}</span>
@@ -799,7 +805,8 @@
         <div class="m-factura" style="margin-bottom:10px;">📄 ${esc(r.factura)||'—'}</div>
         <div class="m-grid">
           <div class="m-field"><label>Fecha prevista</label>
-            <input type="date" class="ci" value="${r.fecha||''}" onchange="updAndSave(${i},'fecha',this.value)"
+            <input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
+              onchange="upd(${i},'fecha',this.value)"
               style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>
           <div class="m-field"><label>Total Palets</label>
             <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
@@ -811,11 +818,11 @@
               oninput="upd(${i},'p_ubicar',this.value)"
               onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value" style="max-width:80px;"></div>
           <div class="m-field"><label>Calle</label>
-            <input type="text" class="ci" value="${esc(r.calle)}" placeholder="—"
-              oninput="upd(${i},'calle',this.value)" onblur="save(${i},'calle',this.value)" style="max-width:80px;"></div>
+            <input type="text" class="ci ci-calle" value="${esc(r.calle)}" placeholder="—" data-orig="${esc(r.calle)}" disabled
+              oninput="upd(${i},'calle',this.value)" style="max-width:80px;"></div>
           <div class="m-field" style="grid-column:1/-1"><label>Observaciones</label>
-            <input type="text" class="ci" value="${esc(r.obs)}" placeholder="—"
-              oninput="upd(${i},'obs',this.value)" onblur="save(${i},'obs',this.value)"></div>
+            <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
+              oninput="upd(${i},'obs',this.value)"></div>
           <div class="m-field" style="grid-column:1/-1"><label>Estado</label>
             <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
               <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
@@ -824,6 +831,8 @@
             </select></div>
         </div>
         <div class="m-actions">
+          <button class="edit-btn" onclick="toggleEditMRow(${i})" title="Editar">${ICON_PENCIL}</button>
+          <button class="save-btn" onclick="saveMRow(${i})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
           <button class="del-btn" onclick="del(${i})" style="width:auto;padding:5px 14px;font-size:.78rem;">✕ Eliminar</button>
         </div>
       </div>`;
@@ -840,6 +849,89 @@
     if (error) console.error('Error al guardar:', key, error.message);
   }
   async function updAndSave(i, key, val) { upd(i,key,val); await save(i,key,val); }
+
+  function toggleEditRow(i) {
+    const row   = document.getElementById('exp-row-' + i);
+    const fecha = row.querySelector('.ci-fecha');
+    const dest  = row.querySelector('.ci-dest');
+    const fact  = row.querySelector('.ci-fact');
+    const calle = row.querySelector('.ci-calle');
+    const obs   = row.querySelector('.ci-obs');
+    const fields  = [fecha, dest, fact, calle, obs];
+    const editBtn = row.querySelector('.edit-btn');
+    const saveBtn = row.querySelector('.save-btn');
+    const entering = fecha.disabled;
+    if (entering) {
+      fields.forEach(f => f.disabled = false);
+      editBtn.title = 'Cancelar edición';
+      saveBtn.style.display = 'inline-flex';
+      dest.focus();
+    } else {
+      fields.forEach(f => f.value = f.dataset.orig);
+      data[i].fecha = fecha.value; data[i].dest = dest.value; data[i].factura = fact.value;
+      data[i].calle = calle.value; data[i].obs = obs.value;
+      fields.forEach(f => f.disabled = true);
+      editBtn.title = 'Editar';
+      saveBtn.style.display = 'none';
+    }
+  }
+
+  async function saveRow(i) {
+    const row   = document.getElementById('exp-row-' + i);
+    const fecha = row.querySelector('.ci-fecha');
+    const dest  = row.querySelector('.ci-dest');
+    const fact  = row.querySelector('.ci-fact');
+    const calle = row.querySelector('.ci-calle');
+    const obs   = row.querySelector('.ci-obs');
+    await Promise.all([
+      save(i, 'fecha', fecha.value),
+      save(i, 'dest', dest.value),
+      save(i, 'factura', fact.value),
+      save(i, 'calle', calle.value),
+      save(i, 'obs', obs.value),
+    ]);
+    [fecha, dest, fact, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
+    row.querySelector('.edit-btn').title = 'Editar';
+    row.querySelector('.save-btn').style.display = 'none';
+  }
+
+  function toggleEditMRow(i) {
+    const row   = document.getElementById('exp-mrow-' + i);
+    const fecha = row.querySelector('.ci-fecha');
+    const calle = row.querySelector('.ci-calle');
+    const obs   = row.querySelector('.ci-obs');
+    const fields  = [fecha, calle, obs];
+    const editBtn = row.querySelector('.edit-btn');
+    const saveBtn = row.querySelector('.save-btn');
+    const entering = fecha.disabled;
+    if (entering) {
+      fields.forEach(f => f.disabled = false);
+      editBtn.title = 'Cancelar edición';
+      saveBtn.style.display = 'inline-flex';
+      fecha.focus();
+    } else {
+      fields.forEach(f => f.value = f.dataset.orig);
+      data[i].fecha = fecha.value; data[i].calle = calle.value; data[i].obs = obs.value;
+      fields.forEach(f => f.disabled = true);
+      editBtn.title = 'Editar';
+      saveBtn.style.display = 'none';
+    }
+  }
+
+  async function saveMRow(i) {
+    const row   = document.getElementById('exp-mrow-' + i);
+    const fecha = row.querySelector('.ci-fecha');
+    const calle = row.querySelector('.ci-calle');
+    const obs   = row.querySelector('.ci-obs');
+    await Promise.all([
+      save(i, 'fecha', fecha.value),
+      save(i, 'calle', calle.value),
+      save(i, 'obs', obs.value),
+    ]);
+    [fecha, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
+    row.querySelector('.edit-btn').title = 'Editar';
+    row.querySelector('.save-btn').style.display = 'none';
+  }
 
   async function handleEstadoChange(i, val, selectEl) {
     if (val === 'completado') {
@@ -1048,9 +1140,6 @@
   }
 
   // ===== HISTORIAL UBICADOS POR DÍA =====
-  const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>';
-  const ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>';
-
   function toggleHistorialUbicados() {
     document.getElementById('historialPanel').classList.remove('open');
     document.getElementById('histOverlay').classList.remove('open');
