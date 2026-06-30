@@ -359,11 +359,11 @@
   .del-btn:hover { border-color:var(--danger); color:var(--danger); background:rgba(255,77,109,.08); }
   .ci:disabled { opacity:.55; cursor:not-allowed; background:transparent !important; border-color:transparent !important; }
   .edit-btn, .save-btn {
-    background:rgba(0,229,160,.06); border:1.5px solid var(--accent); color:var(--accent);
-    width:32px; height:32px; border-radius:8px; flex-shrink:0;
+    background:none; border:1px solid transparent; color:var(--muted);
+    width:28px; height:28px; border-radius:6px; flex-shrink:0;
     cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; justify-content:center;
   }
-  .edit-btn:hover, .save-btn:hover { background:rgba(0,229,160,.2); }
+  .edit-btn:hover, .save-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.08); }
   .edit-btn svg, .save-btn svg { width:15px; height:15px; }
   .hist-del-btn {
     background:none; border:1px solid var(--danger); color:var(--danger);
