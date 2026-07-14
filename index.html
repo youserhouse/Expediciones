@@ -749,10 +749,10 @@
           oninput="upd(${i},'factura',this.value)"></td>
         <td>
           <div class="pw">
-            <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
+            <input type="number" class="ci ci-palets" value="${r.palets||''}" data-orig="${r.palets||''}" min="0"
               ${locked?'disabled':''}
               oninput="upd(${i},'palets',this.value);updBar(${i},this.value)"
-              onblur="save(${i},'palets',this.value)">
+              onblur="if(this.closest('tr').querySelector('.save-btn').style.display!=='inline-flex')save(${i},'palets',this.value)">
             <div class="pb-wrap"><div class="pb-bar" id="bar-${i}" style="width:${pct}%"></div></div>
           </div>
         </td>
@@ -809,9 +809,10 @@
               onchange="upd(${i},'fecha',this.value)"
               style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>
           <div class="m-field"><label>Total Palets</label>
-            <input type="number" class="ci ci-palets" value="${r.palets||''}" min="0"
+            <input type="number" class="ci ci-palets" value="${r.palets||''}" data-orig="${r.palets||''}" min="0"
               ${locked?'disabled':''}
-              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)" onblur="save(${i},'palets',this.value)" style="max-width:80px;"></div>
+              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)"
+              onblur="if(this.closest('.m-card').querySelector('.save-btn').style.display!=='inline-flex')save(${i},'palets',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>P. por ubicar</label>
             <input type="number" class="ci ci-num" value="${r.p_ubicar||''}" min="0"
               ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
@@ -851,84 +852,99 @@
   async function updAndSave(i, key, val) { upd(i,key,val); await save(i,key,val); }
 
   function toggleEditRow(i) {
-    const row   = document.getElementById('exp-row-' + i);
-    const fecha = row.querySelector('.ci-fecha');
-    const dest  = row.querySelector('.ci-dest');
-    const fact  = row.querySelector('.ci-fact');
-    const calle = row.querySelector('.ci-calle');
-    const obs   = row.querySelector('.ci-obs');
-    const fields  = [fecha, dest, fact, calle, obs];
+    const row    = document.getElementById('exp-row-' + i);
+    const fecha  = row.querySelector('.ci-fecha');
+    const dest   = row.querySelector('.ci-dest');
+    const fact   = row.querySelector('.ci-fact');
+    const palets = row.querySelector('.ci-palets');
+    const calle  = row.querySelector('.ci-calle');
+    const obs    = row.querySelector('.ci-obs');
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
     const entering = fecha.disabled;
+    const locked = data[i].estado === 'en_transito';
     if (entering) {
-      fields.forEach(f => f.disabled = false);
+      [fecha, dest, fact, palets, calle, obs].forEach(f => f.disabled = false);
       editBtn.title = 'Cancelar edición';
       saveBtn.style.display = 'inline-flex';
       dest.focus();
     } else {
-      fields.forEach(f => f.value = f.dataset.orig);
+      [fecha, dest, fact, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
+      palets.value = palets.dataset.orig;
+      palets.disabled = locked;
       data[i].fecha = fecha.value; data[i].dest = dest.value; data[i].factura = fact.value;
-      data[i].calle = calle.value; data[i].obs = obs.value;
-      fields.forEach(f => f.disabled = true);
+      data[i].palets = Number(palets.value) || 0; data[i].calle = calle.value; data[i].obs = obs.value;
       editBtn.title = 'Editar';
       saveBtn.style.display = 'none';
     }
   }
 
   async function saveRow(i) {
-    const row   = document.getElementById('exp-row-' + i);
-    const fecha = row.querySelector('.ci-fecha');
-    const dest  = row.querySelector('.ci-dest');
-    const fact  = row.querySelector('.ci-fact');
-    const calle = row.querySelector('.ci-calle');
-    const obs   = row.querySelector('.ci-obs');
+    const row    = document.getElementById('exp-row-' + i);
+    const fecha  = row.querySelector('.ci-fecha');
+    const dest   = row.querySelector('.ci-dest');
+    const fact   = row.querySelector('.ci-fact');
+    const palets = row.querySelector('.ci-palets');
+    const calle  = row.querySelector('.ci-calle');
+    const obs    = row.querySelector('.ci-obs');
+    const locked = data[i].estado === 'en_transito';
     await Promise.all([
       save(i, 'fecha', fecha.value),
       save(i, 'dest', dest.value),
       save(i, 'factura', fact.value),
+      save(i, 'palets', palets.value),
       save(i, 'calle', calle.value),
       save(i, 'obs', obs.value),
     ]);
     [fecha, dest, fact, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
+    palets.dataset.orig = palets.value;
+    palets.disabled = locked;
     row.querySelector('.edit-btn').title = 'Editar';
     row.querySelector('.save-btn').style.display = 'none';
   }
 
   function toggleEditMRow(i) {
-    const row   = document.getElementById('exp-mrow-' + i);
-    const fecha = row.querySelector('.ci-fecha');
-    const calle = row.querySelector('.ci-calle');
-    const obs   = row.querySelector('.ci-obs');
-    const fields  = [fecha, calle, obs];
+    const row    = document.getElementById('exp-mrow-' + i);
+    const fecha  = row.querySelector('.ci-fecha');
+    const palets = row.querySelector('.ci-palets');
+    const calle  = row.querySelector('.ci-calle');
+    const obs    = row.querySelector('.ci-obs');
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
     const entering = fecha.disabled;
+    const locked = data[i].estado === 'en_transito';
     if (entering) {
-      fields.forEach(f => f.disabled = false);
+      [fecha, palets, calle, obs].forEach(f => f.disabled = false);
       editBtn.title = 'Cancelar edición';
       saveBtn.style.display = 'inline-flex';
       fecha.focus();
     } else {
-      fields.forEach(f => f.value = f.dataset.orig);
-      data[i].fecha = fecha.value; data[i].calle = calle.value; data[i].obs = obs.value;
-      fields.forEach(f => f.disabled = true);
+      [fecha, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
+      palets.value = palets.dataset.orig;
+      palets.disabled = locked;
+      data[i].fecha = fecha.value; data[i].palets = Number(palets.value) || 0;
+      data[i].calle = calle.value; data[i].obs = obs.value;
       editBtn.title = 'Editar';
       saveBtn.style.display = 'none';
     }
   }
 
   async function saveMRow(i) {
-    const row   = document.getElementById('exp-mrow-' + i);
-    const fecha = row.querySelector('.ci-fecha');
-    const calle = row.querySelector('.ci-calle');
-    const obs   = row.querySelector('.ci-obs');
+    const row    = document.getElementById('exp-mrow-' + i);
+    const fecha  = row.querySelector('.ci-fecha');
+    const palets = row.querySelector('.ci-palets');
+    const calle  = row.querySelector('.ci-calle');
+    const obs    = row.querySelector('.ci-obs');
+    const locked = data[i].estado === 'en_transito';
     await Promise.all([
       save(i, 'fecha', fecha.value),
+      save(i, 'palets', palets.value),
       save(i, 'calle', calle.value),
       save(i, 'obs', obs.value),
     ]);
     [fecha, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
+    palets.dataset.orig = palets.value;
+    palets.disabled = locked;
     row.querySelector('.edit-btn').title = 'Editar';
     row.querySelector('.save-btn').style.display = 'none';
   }
