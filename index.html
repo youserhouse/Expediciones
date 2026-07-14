@@ -979,14 +979,16 @@
 
   async function saveUbicados(i, newVal, oldVal) {
     const delta = (Number(oldVal)||0) - (Number(newVal)||0);
-    if (delta > 0) await registrarUbicadosHoy(delta);
+    if (delta !== 0) await registrarUbicadosHoy(delta);
     await save(i, 'p_ubicar', newVal);
   }
 
   async function registrarUbicadosHoy(delta) {
     const { data: existing } = await sb
       .from('historial_ubicados_dia').select('palets_ubicados').eq('fecha', todayISO).single();
-    const newCount = (existing?.palets_ubicados || 0) + delta;
+    const current = existing?.palets_ubicados || 0;
+    const newCount = Math.max(0, current + delta);
+    if (!existing && newCount === 0) return;
     await sb.from('historial_ubicados_dia')
       .upsert({ fecha: todayISO, palets_ubicados: newCount }, { onConflict: 'fecha' });
     ubicadosHoy = newCount;
