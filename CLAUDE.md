@@ -86,6 +86,7 @@ All tables have RLS enabled. Realtime is enabled on `expediciones` for cross-tab
 - **`palets` editable on en_transito via pencil** — pencil now also unlocks `palets` for locked rows; blur-save is skipped while save button is visible to avoid saving before cancel.
 - **KPI "Ubicados Hoy" bidirectional** — `saveUbicados` computes `delta = oldVal - newVal`; applies positive (more located) or negative (un-located) delta to today's `historial_ubicados_dia` row; result clamped to ≥ 0.
 - **Accordion + ⚙ filter in both historial panels** — each item collapses to date + key stat, expands on click; gear button opens date filter bar (Todo / 3 meses / Este mes / Última semana); filtering is client-side from in-memory cache.
+- **Historial facturas detail redesigned as cards** — each expedición inside a cierre shows as a 2-line card (destino + factura number on line 1, palets + estado badge on line 2) instead of a 5-column table; fits the 440 px panel without squishing. Detail scrolls vertically if many rows.
 
 ## Database migrations
 
