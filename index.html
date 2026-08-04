@@ -265,15 +265,15 @@
   .cierre-chevron { color: var(--muted); font-size: .75rem; transition: transform .2s; flex-shrink: 0; }
   .cierre-item.expanded .cierre-chevron { transform: rotate(180deg); }
   .cierre-detail { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
-  .cierre-item.expanded .cierre-detail { max-height: 600px; border-top: 1px solid var(--border); }
-  .cierre-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
-  .cierre-table th {
-    padding: 7px 10px; text-align: left; color: var(--muted);
-    font-size: .6rem; letter-spacing: 1.5px; text-transform: uppercase;
-    background: rgba(0,0,0,.15); border-bottom: 1px solid var(--border);
-  }
-  .cierre-table td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); }
-  .cierre-table tr:last-child td { border-bottom: none; }
+  .cierre-item.expanded .cierre-detail { max-height: 500px; overflow-y: auto; border-top: 1px solid var(--border); }
+  .exp-row { padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .exp-row:last-child { border-bottom: none; }
+  .exp-row-main { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+  .exp-dest { font-size: .8rem; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .exp-fact { font-size: .68rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+  .exp-row-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .exp-meta { font-size: .68rem; color: var(--muted); }
+  .exp-meta b { color: var(--text); font-weight: 600; }
   .estado-badge { font-size: .62rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; }
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
@@ -1192,15 +1192,22 @@
       const fecha = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
       const hora  = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       const exps  = Array.isArray(c.expediciones) ? c.expediciones : [];
-      const expRows = exps.map(e =>
-        `<tr>
-          <td>${esc(e.dest) || '—'}</td>
-          <td style="font-family:'JetBrains Mono',monospace;font-size:.72rem;">${esc(e.factura) || '—'}</td>
-          <td style="text-align:center;">${e.palets || 0}</td>
-          <td style="text-align:center;">${e.p_ubicar || 0}</td>
-          <td><span class="estado-badge estado-${e.estado||'en_transito'}">${statusLabel(e.estado||'en_transito')}</span></td>
-        </tr>`
-      ).join('');
+      const expCards = exps.length
+        ? exps.map(e => {
+            const st = e.estado || 'en_transito';
+            const pend = Number(e.p_ubicar) || 0;
+            return `<div class="exp-row">
+              <div class="exp-row-main">
+                <span class="exp-dest">${esc(e.dest) || '—'}</span>
+                <span class="exp-fact">${esc(e.factura) || '—'}</span>
+              </div>
+              <div class="exp-row-sub">
+                <span class="exp-meta"><b>${e.palets || 0}</b> palets${pend ? ` · <b style="color:var(--warn)">${pend}</b> pend.` : ''}</span>
+                <span class="estado-badge estado-${st}">${statusLabel(st)}</span>
+              </div>
+            </div>`;
+          }).join('')
+        : '<div style="padding:14px 16px;color:var(--muted);font-size:.78rem;">Sin expediciones registradas</div>';
       return `
         <div class="cierre-item" id="cierre-${c.id}">
           <div class="cierre-head" onclick="toggleCierreDetail('${c.id}')">
@@ -1217,17 +1224,7 @@
               <span class="cierre-chevron">▼</span>
             </div>
           </div>
-          <div class="cierre-detail">
-            <table class="cierre-table">
-              <thead><tr>
-                <th>Destino</th><th>Factura</th>
-                <th style="text-align:center">Palets</th>
-                <th style="text-align:center">Pend.</th>
-                <th>Estado</th>
-              </tr></thead>
-              <tbody>${expRows || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px;">Sin registros</td></tr>'}</tbody>
-            </table>
-          </div>
+          <div class="cierre-detail">${expCards}</div>
         </div>`;
     }).join('');
   }
