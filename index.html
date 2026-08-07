@@ -34,6 +34,7 @@
     --warn: #ffb830;
     --danger: #ff4d6d;
     --purple: #a78bfa;
+    --cyan: #22d3ee;
     --text: #e8eaf2;
     --muted: #5a6180;
   }
@@ -154,7 +155,7 @@
 
   /* ===== KPI GRID ===== */
   .kpi-grid {
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
     gap: 14px; margin-bottom: 24px;
   }
   .kpi-card {
@@ -171,6 +172,7 @@
   .kpi-card:nth-child(3){--kc:var(--purple);  animation-delay:.15s}
   .kpi-card:nth-child(4){--kc:var(--accent2); animation-delay:.20s}
   .kpi-card:nth-child(5){--kc:var(--accent);  animation-delay:.25s}
+  .kpi-card:nth-child(6){--kc:var(--cyan);    animation-delay:.30s}
   .kpi-label { font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
   .kpi-value { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,4vw,2.8rem); line-height:1; color:var(--kc,var(--accent)); }
   .kpi-sub   { font-size:.68rem; color:var(--muted); margin-top:5px; }
@@ -190,7 +192,7 @@
     max-height: 0; overflow: hidden; opacity: 0;
     transition: max-height .25s ease, opacity .2s ease, padding-top .2s ease;
   }
-  .kpi-card:hover .kpi-extra { max-height: 80px; opacity: 1; padding-top: 7px; }
+  .kpi-card:hover .kpi-extra { max-height: 120px; opacity: 1; padding-top: 7px; }
   .kpi-extra span { display: flex; justify-content: space-between; }
   .kpi-extra b    { color: var(--kc, var(--accent)); font-weight: 600; }
 
@@ -296,6 +298,7 @@
   .estado-completado     { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-en_preparacion { background: rgba(0,153,255,.12); color: var(--accent2); }
   .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
+  .estado-recepcion       { background: rgba(34,211,238,.12); color: var(--cyan); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -360,6 +363,8 @@
   .ci-dest:focus { color:var(--accent2) !important; }
   .ci-fact  { font-family:'JetBrains Mono',monospace !important; font-size:.8rem !important; }
   .ci-num   { max-width:70px; }
+  .ci-ubic  { max-width:70px; color:var(--accent) !important; font-weight:600; }
+  .ci-ubic:focus { color:var(--accent) !important; }
   .ci-palets {
     font-family:'Bebas Neue',sans-serif !important; font-size:1.4rem !important;
     color:var(--warn) !important; max-width:60px; text-align:center;
@@ -376,6 +381,7 @@
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="recepcion"]      { color:var(--cyan);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="en_preparacion"] { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="completado"]     { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
@@ -524,7 +530,7 @@
     <div class="kpi-card">
       <div class="kpi-label">Total Palets</div>
       <div class="kpi-value" id="kpiPalets">0</div>
-      <div class="kpi-sub">Palets en preparación</div>
+      <div class="kpi-sub">Palets en reponer</div>
       <div class="kpi-extra" id="kpiExtraPalets"></div>
     </div>
     <div class="kpi-card">
@@ -532,6 +538,12 @@
       <div class="kpi-value" id="kpiPaletsTransito">0</div>
       <div class="kpi-sub">Unidades en tránsito</div>
       <div class="kpi-extra" id="kpiExtraPaletsTransito"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Palets en Recepción</div>
+      <div class="kpi-value" id="kpiPaletsRecepcion">0</div>
+      <div class="kpi-sub">Recibidos sin reponer</div>
+      <div class="kpi-extra" id="kpiExtraPaletsRecepcion"></div>
     </div>
   </div>
 
@@ -567,12 +579,12 @@
         <thead>
           <tr>
             <th>Fecha prevista</th><th>Destinatario</th><th>Factura</th>
-            <th>Total Palets</th><th>P. por ubicar</th><th>Calle</th>
+            <th>Total Palets</th><th>Ubicados</th><th>P. por ubicar</th><th>Calle</th>
             <th>Observaciones</th><th>Estado</th><th>—</th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr class="loading-row"><td colspan="9"><span class="spinner"></span>Cargando…</td></tr>
+          <tr class="loading-row"><td colspan="10"><span class="spinner"></span>Cargando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -589,14 +601,16 @@
       <div class="fg"><label>Fecha prevista</label><input type="date" id="fFecha"></div>
       <div class="fg"><label>Destinatario</label><input type="text" id="fDest" placeholder="Ej: MISFAT"></div>
       <div class="fg"><label>Nº Factura</label><input type="text" id="fFactura" placeholder="Ej: 26001125"></div>
-      <div class="fg"><label>Total Palets</label><input type="number" id="fPalets" min="0" placeholder="0"></div>
+      <div class="fg"><label>Total Palets</label><input type="number" id="fPalets" min="0" placeholder="0"
+        oninput="document.getElementById('fPUbicar').value = this.value"></div>
       <div class="fg"><label>P. por ubicar</label><input type="number" id="fPUbicar" min="0" placeholder="0"></div>
       <div class="fg"><label>Calle</label><input type="text" id="fCalle" placeholder="Ej: A3"></div>
       <div class="fg full"><label>Observaciones</label><textarea id="fObs" placeholder="Notas..."></textarea></div>
       <div class="fg"><label>Estado</label>
         <select id="fEstado">
           <option value="en_transito" selected>En tránsito</option>
-          <option value="en_preparacion">En preparación</option>
+          <option value="recepcion">Recepción</option>
+          <option value="en_preparacion">Reponer</option>
         </select>
       </div>
     </div>
@@ -741,7 +755,7 @@
 
     if (error) {
       document.getElementById('tableBody').innerHTML =
-        `<tr class="error-row"><td colspan="9">⚠ Error al cargar datos: ${error.message}</td></tr>`;
+        `<tr class="error-row"><td colspan="10">⚠ Error al cargar datos: ${error.message}</td></tr>`;
       return;
     }
     data = rows || [];
@@ -762,52 +776,96 @@
       : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`;
   }
 
-  function updateKPIs() {
-    const enPrep              = data.filter(r => r.estado === 'en_preparacion');
-    const totalPalets         = enPrep.reduce((s,r) => s + (Number(r.palets)   || 0), 0);
-    const totalPendientes     = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
-    const totalPaletsTransito = data
-      .filter(r => r.estado === 'en_transito')
-      .reduce((s,r) => s + (Number(r.palets) || 0), 0);
-    const nEnTransito         = data.filter(r => r.estado === 'en_transito').length;
-    const nEnPrep             = enPrep.length;
+  // ===== ESTADOS =====
+  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Completo)
+  const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
+  const ESTADO_TEXT = {
+    en_transito:    'En tránsito',
+    recepcion:      'Recepción',
+    en_preparacion: 'Reponer',
+    completado:     'Completo',
+  };
+  const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
+  const ESTADO_COLOR = {
+    en_transito:    'var(--warn)',
+    recepcion:      'var(--cyan)',
+    en_preparacion: 'var(--accent2)',
+    completado:     'var(--accent)',
+  };
 
-    document.getElementById('kpiFacturas').textContent      = data.length;
-    document.getElementById('kpiPendientes').textContent    = totalPendientes;
-    document.getElementById('kpiHoy').textContent           = ubicadosHoy;
-    document.getElementById('kpiPalets').textContent        = totalPalets;
-    document.getElementById('kpiPaletsTransito').textContent = totalPaletsTransito;
-    document.getElementById('kpiHoySub').textContent        = 'Palés ubicados hoy';
+  // Normaliza los valores antiguos que puedan quedar en el histórico
+  function normEstado(s) {
+    if (s === 'ok')        return 'completado';
+    if (s === 'tarde')     return 'en_preparacion';
+    if (s === 'pendiente') return 'en_transito';
+    return ESTADOS.includes(s) ? s : 'en_transito';
+  }
+  // Solo en Reponer se tocan Ubicados / P. por ubicar
+  function esReponer(r) { return normEstado(r.estado) === 'en_preparacion'; }
+
+  function estadoOptions(sel) {
+    const s = normEstado(sel);
+    // "Completo" archiva la factura, por eso se ofrece también en la tabla
+    return ESTADOS.map(v => `<option value="${v}" ${s===v?'selected':''}>${ESTADO_TEXT[v]}</option>`).join('');
+  }
+
+  function updateKPIs() {
+    const enPrep    = data.filter(esReponer);
+    const enTransit = data.filter(r => normEstado(r.estado) === 'en_transito');
+    const enRecep   = data.filter(r => normEstado(r.estado) === 'recepcion');
+
+    const sumPalets = rows => rows.reduce((s,r) => s + (Number(r.palets) || 0), 0);
+    const totalPalets          = sumPalets(enPrep);
+    const totalPendientes      = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
+    const totalUbicados        = enPrep.reduce((s,r) => s + (Number(r.ubicados) || 0), 0);
+    const totalPaletsTransito  = sumPalets(enTransit);
+    const totalPaletsRecepcion = sumPalets(enRecep);
+    const nEnTransito = enTransit.length, nEnRecep = enRecep.length, nEnPrep = enPrep.length;
+
+    document.getElementById('kpiFacturas').textContent        = data.length;
+    document.getElementById('kpiPendientes').textContent      = totalPendientes;
+    document.getElementById('kpiHoy').textContent             = ubicadosHoy;
+    document.getElementById('kpiPalets').textContent          = totalPalets;
+    document.getElementById('kpiPaletsTransito').textContent  = totalPaletsTransito;
+    document.getElementById('kpiPaletsRecepcion').textContent = totalPaletsRecepcion;
+    document.getElementById('kpiHoySub').textContent          = 'Palés ubicados hoy';
 
     const pctPend = totalPalets > 0 ? Math.round((totalPendientes / totalPalets) * 100) : 0;
     const avg     = nEnPrep > 0 ? (totalPalets / nEnPrep).toFixed(1) : '0';
 
     document.getElementById('kpiExtraFacturas').innerHTML =
       `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
-      `<span><span>🔧 En preparación</span><b>${nEnPrep}</b></span>`;
+      `<span><span>📦 Recepción</span><b>${nEnRecep}</b></span>` +
+      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`;
 
     document.getElementById('kpiExtraPendientes').innerHTML =
       `<span><span>% sobre total palets</span><b>${pctPend}%</b></span>` +
-      `<span><span>Palets sin ubicar</span><b>${totalPendientes}</b></span>`;
+      `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`;
 
     renderKpiExtraUbicados();
 
     document.getElementById('kpiExtraPalets').innerHTML =
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
-      `<span><span>Facturas en preparación</span><b>${nEnPrep}</b></span>`;
+      `<span><span>Facturas en reponer</span><b>${nEnPrep}</b></span>`;
 
     document.getElementById('kpiExtraPaletsTransito').innerHTML =
       `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`;
+
+    document.getElementById('kpiExtraPaletsRecepcion').innerHTML =
+      `<span><span>Facturas en recepción</span><b>${nEnRecep}</b></span>`;
   }
 
   function render() { renderDesktop(); renderMobile(); updateKPIs(); }
 
   function renderDesktop() {
     const tbody = document.getElementById('tableBody');
-    if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Sin expediciones registradas</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Sin expediciones registradas</td></tr>'; return; }
     tbody.innerHTML = data.map((r,i) => {
-      const pct    = Math.min(100, ((Number(r.palets)||0)/80)*100);
-      const locked = r.estado === 'en_transito';
+      const pct   = Math.min(100, ((Number(r.palets)||0)/80)*100);
+      const total = Number(r.palets)   || 0;
+      const ubic  = Number(r.ubicados) || 0;
+      const pUb   = Number(r.p_ubicar) || 0;
+      const repo  = esReponer(r);   // Ubicados / P. por ubicar solo se editan en Reponer
       return `<tr id="exp-row-${i}">
         <td><input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
           onchange="upd(${i},'fecha',this.value)"></td>
@@ -817,26 +875,24 @@
           oninput="upd(${i},'factura',this.value)"></td>
         <td>
           <div class="pw">
-            <input type="number" class="ci ci-palets" value="${r.palets||''}" data-orig="${r.palets||''}" min="0"
-              ${locked?'disabled':''}
-              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)"
-              onblur="if(this.closest('tr').querySelector('.save-btn').style.display!=='inline-flex')save(${i},'palets',this.value)">
+            <input type="number" class="ci ci-palets" value="${total}" data-orig="${total}" min="0" disabled
+              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)">
             <div class="pb-wrap"><div class="pb-bar" id="bar-${i}" style="width:${pct}%"></div></div>
           </div>
         </td>
-        <td><input type="number" class="ci ci-num" value="${r.p_ubicar||''}" min="0"
-          ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
-          oninput="upd(${i},'p_ubicar',this.value)"
-          onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value"></td>
+        <td><input type="number" class="ci ci-num ci-ubic" value="${ubic}" min="0" max="${total}"
+          ${repo?'':'disabled'}
+          onblur="editarReposicion(${i},'ubicados',this.value)"></td>
+        <td><input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
+          ${repo?'':'disabled'}
+          onblur="editarReposicion(${i},'p_ubicar',this.value)"></td>
         <td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
           oninput="upd(${i},'calle',this.value)"></td>
         <td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
           oninput="upd(${i},'obs',this.value)"></td>
         <td>
-          <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
-            <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
-            <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
-            <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
+          <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
+            ${estadoOptions(r.estado)}
           </select>
         </td>
         <td style="display:flex;gap:4px;align-items:center;justify-content:center;">
@@ -848,22 +904,17 @@
     }).join('');
   }
 
-  function statusLabel(s) {
-    if (s==='completado'||s==='ok') return '✓ Completado';
-    if (s==='en_preparacion'||s==='tarde') return '🔧 En preparación';
-    return '🚚 En tránsito';
-  }
-  function statusColor(s) {
-    if (s==='completado'||s==='ok') return 'var(--accent)';
-    if (s==='en_preparacion'||s==='tarde') return 'var(--accent2)';
-    return 'var(--warn)';
-  }
+  function statusLabel(s) { const e = normEstado(s); return `${ESTADO_ICON[e]} ${ESTADO_TEXT[e]}`; }
+  function statusColor(s) { return ESTADO_COLOR[normEstado(s)]; }
 
   function renderMobile() {
     const mc = document.getElementById('mobileCards');
     if (!data.length) { mc.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">Sin expediciones</div>'; return; }
     mc.innerHTML = data.map((r,i) => {
-      const locked = r.estado === 'en_transito';
+      const total = Number(r.palets)   || 0;
+      const ubic  = Number(r.ubicados) || 0;
+      const pUb   = Number(r.p_ubicar) || 0;
+      const repo  = esReponer(r);
       return `
       <div class="m-card" id="exp-mrow-${i}">
         <div class="m-card-head">
@@ -877,15 +928,16 @@
               onchange="upd(${i},'fecha',this.value)"
               style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>
           <div class="m-field"><label>Total Palets</label>
-            <input type="number" class="ci ci-palets" value="${r.palets||''}" data-orig="${r.palets||''}" min="0"
-              ${locked?'disabled':''}
-              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)"
-              onblur="if(this.closest('.m-card').querySelector('.save-btn').style.display!=='inline-flex')save(${i},'palets',this.value)" style="max-width:80px;"></div>
+            <input type="number" class="ci ci-palets" value="${total}" data-orig="${total}" min="0" disabled
+              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)" style="max-width:80px;"></div>
+          <div class="m-field"><label>Ubicados</label>
+            <input type="number" class="ci ci-num ci-ubic" value="${ubic}" min="0" max="${total}"
+              ${repo?'':'disabled'}
+              onblur="editarReposicion(${i},'ubicados',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>P. por ubicar</label>
-            <input type="number" class="ci ci-num" value="${r.p_ubicar||''}" min="0"
-              ${locked?'disabled':''} data-saved="${r.p_ubicar||0}"
-              oninput="upd(${i},'p_ubicar',this.value)"
-              onblur="saveUbicados(${i},this.value,this.dataset.saved);this.dataset.saved=this.value" style="max-width:80px;"></div>
+            <input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
+              ${repo?'':'disabled'}
+              onblur="editarReposicion(${i},'p_ubicar',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>Calle</label>
             <input type="text" class="ci ci-calle" value="${esc(r.calle)}" placeholder="—" data-orig="${esc(r.calle)}" disabled
               oninput="upd(${i},'calle',this.value)" style="max-width:80px;"></div>
@@ -893,10 +945,8 @@
             <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
               oninput="upd(${i},'obs',this.value)"></div>
           <div class="m-field" style="grid-column:1/-1"><label>Estado</label>
-            <select class="ci" data-v="${r.estado}" onchange="handleEstadoChange(${i},this.value,this)">
-              <option value="en_transito"     ${r.estado==='en_transito'    ?'selected':''}>En tránsito</option>
-              <option value="en_preparacion" ${r.estado==='en_preparacion'?'selected':''}>En preparación</option>
-              <option value="completado"     ${r.estado==='completado'    ?'selected':''}>Completado</option>
+            <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
+              ${estadoOptions(r.estado)}
             </select></div>
         </div>
         <div class="m-actions">
@@ -912,12 +962,26 @@
     data[i][key] = val; updateKPIs();
     if (window.innerWidth<=700 && (key==='estado'||key==='dest'||key==='factura')) renderMobile();
   }
+  const NUM_KEYS = ['palets', 'p_ubicar', 'ubicados'];
   async function save(i, key, val) {
-    const payload = { [key]: val===''?null:(key==='palets'||key==='p_ubicar'?Number(val)||0:val) };
+    const payload = { [key]: val===''?null:(NUM_KEYS.includes(key)?Number(val)||0:val) };
     const { error } = await sb.from('expediciones').update(payload).eq('id', data[i].id);
     if (error) console.error('Error al guardar:', key, error.message);
   }
-  async function updAndSave(i, key, val) { upd(i,key,val); await save(i,key,val); }
+
+  // Guarda los campos del lápiz y rehace la coherencia ubicados + p_ubicar = palets
+  async function guardarFila(i, vals) {
+    const total   = Math.max(0, Number(vals.palets) || 0);
+    const ubic    = Math.min(Math.max(0, Number(data[i].ubicados) || 0), total);
+    const payload = { ...vals, palets: total, ubicados: ubic, p_ubicar: total - ubic };
+    for (const k of ['fecha','dest','factura','calle','obs']) {
+      if (k in payload && payload[k] === '') payload[k] = null;
+    }
+    const { error } = await sb.from('expediciones').update(payload).eq('id', data[i].id);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    Object.assign(data[i], payload);
+    render();
+  }
 
   function toggleEditRow(i) {
     const row    = document.getElementById('exp-row-' + i);
@@ -930,7 +994,6 @@
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
     const entering = fecha.disabled;
-    const locked = data[i].estado === 'en_transito';
     if (entering) {
       [fecha, dest, fact, palets, calle, obs].forEach(f => f.disabled = false);
       editBtn.title = 'Cancelar edición';
@@ -939,7 +1002,7 @@
     } else {
       [fecha, dest, fact, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
       palets.value = palets.dataset.orig;
-      palets.disabled = locked;
+      palets.disabled = true;
       data[i].fecha = fecha.value; data[i].dest = dest.value; data[i].factura = fact.value;
       data[i].palets = Number(palets.value) || 0; data[i].calle = calle.value; data[i].obs = obs.value;
       editBtn.title = 'Editar';
@@ -948,27 +1011,15 @@
   }
 
   async function saveRow(i) {
-    const row    = document.getElementById('exp-row-' + i);
-    const fecha  = row.querySelector('.ci-fecha');
-    const dest   = row.querySelector('.ci-dest');
-    const fact   = row.querySelector('.ci-fact');
-    const palets = row.querySelector('.ci-palets');
-    const calle  = row.querySelector('.ci-calle');
-    const obs    = row.querySelector('.ci-obs');
-    const locked = data[i].estado === 'en_transito';
-    await Promise.all([
-      save(i, 'fecha', fecha.value),
-      save(i, 'dest', dest.value),
-      save(i, 'factura', fact.value),
-      save(i, 'palets', palets.value),
-      save(i, 'calle', calle.value),
-      save(i, 'obs', obs.value),
-    ]);
-    [fecha, dest, fact, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
-    palets.dataset.orig = palets.value;
-    palets.disabled = locked;
-    row.querySelector('.edit-btn').title = 'Editar';
-    row.querySelector('.save-btn').style.display = 'none';
+    const row = document.getElementById('exp-row-' + i);
+    await guardarFila(i, {
+      fecha:   row.querySelector('.ci-fecha').value,
+      dest:    row.querySelector('.ci-dest').value,
+      factura: row.querySelector('.ci-fact').value,
+      palets:  row.querySelector('.ci-palets').value,
+      calle:   row.querySelector('.ci-calle').value,
+      obs:     row.querySelector('.ci-obs').value,
+    });
   }
 
   function toggleEditMRow(i) {
@@ -980,7 +1031,6 @@
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
     const entering = fecha.disabled;
-    const locked = data[i].estado === 'en_transito';
     if (entering) {
       [fecha, palets, calle, obs].forEach(f => f.disabled = false);
       editBtn.title = 'Cancelar edición';
@@ -989,7 +1039,7 @@
     } else {
       [fecha, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
       palets.value = palets.dataset.orig;
-      palets.disabled = locked;
+      palets.disabled = true;
       data[i].fecha = fecha.value; data[i].palets = Number(palets.value) || 0;
       data[i].calle = calle.value; data[i].obs = obs.value;
       editBtn.title = 'Editar';
@@ -998,57 +1048,65 @@
   }
 
   async function saveMRow(i) {
-    const row    = document.getElementById('exp-mrow-' + i);
-    const fecha  = row.querySelector('.ci-fecha');
-    const palets = row.querySelector('.ci-palets');
-    const calle  = row.querySelector('.ci-calle');
-    const obs    = row.querySelector('.ci-obs');
-    const locked = data[i].estado === 'en_transito';
-    await Promise.all([
-      save(i, 'fecha', fecha.value),
-      save(i, 'palets', palets.value),
-      save(i, 'calle', calle.value),
-      save(i, 'obs', obs.value),
-    ]);
-    [fecha, calle, obs].forEach(f => { f.dataset.orig = f.value; f.disabled = true; });
-    palets.dataset.orig = palets.value;
-    palets.disabled = locked;
-    row.querySelector('.edit-btn').title = 'Editar';
-    row.querySelector('.save-btn').style.display = 'none';
+    const row = document.getElementById('exp-mrow-' + i);
+    await guardarFila(i, {
+      fecha:  row.querySelector('.ci-fecha').value,
+      palets: row.querySelector('.ci-palets').value,
+      calle:  row.querySelector('.ci-calle').value,
+      obs:    row.querySelector('.ci-obs').value,
+    });
   }
 
   async function handleEstadoChange(i, val, selectEl) {
-    if (val === 'completado') {
-      await archivarYEliminar(i);
-    } else {
-      if (selectEl) selectEl.dataset.v = val;
-      await updAndSave(i, 'estado', val);
-    }
+    if (val === 'completado') { await archivarYEliminar(i); return; }
+    if (selectEl) selectEl.dataset.v = val;
+    data[i].estado = val;
+    await save(i, 'estado', val);
+    render();   // los bloqueos de Ubicados / P. por ubicar dependen del estado
   }
 
-  async function archivarYEliminar(i) {
+  // Edita Ubicados o P. por ubicar manteniendo ubicados + p_ubicar = palets
+  async function editarReposicion(i, campo, rawVal) {
+    const row   = data[i];
+    const total = Number(row.palets)   || 0;
+    const prevU = Number(row.ubicados) || 0;
+    const v     = Math.max(0, Math.min(total, Number(rawVal) || 0));
+    const ubic  = campo === 'ubicados' ? v : total - v;
+    const pUb   = total - ubic;
+    if (ubic === prevU && pUb === (Number(row.p_ubicar) || 0)) return;   // sin cambios
+
+    const { error } = await sb.from('expediciones')
+      .update({ ubicados: ubic, p_ubicar: pUb }).eq('id', row.id);
+    if (error) { alert('Error al guardar: ' + error.message); await loadData(); return; }
+    row.ubicados = ubic; row.p_ubicar = pUb;
+
+    const delta = ubic - prevU;                    // palets ubicados en esta acción
+    if (delta !== 0) await registrarUbicadosHoy(delta);
+
+    // Al llegar a 0 pendientes la factura se completa y se archiva sola
+    if (total > 0 && pUb === 0) { await archivarYEliminar(i, { yaContabilizado: true }); return; }
+    render();
+  }
+
+  async function archivarYEliminar(i, opts = {}) {
     const row     = data[i];
+    const total   = Number(row.palets)   || 0;
     const pUbicar = Number(row.p_ubicar) || 0;
     const { error: insertErr } = await sb.from('historial_cierres').insert({
       total_facturas:   1,
-      total_palets:     Number(row.palets) || 0,
-      total_pendientes: pUbicar,
-      expediciones:     [{ ...row, estado: 'completado' }],
+      total_palets:     total,
+      total_pendientes: 0,
+      expediciones:     [{ ...row, estado: 'completado', ubicados: total, p_ubicar: 0 }],
     });
     if (insertErr) { alert('Error al archivar: ' + insertErr.message); return; }
-    if (pUbicar > 0) await registrarUbicadosHoy(pUbicar);
+    // Si se completa a mano, lo que quedaba pendiente cuenta como ubicado hoy
+    if (!opts.yaContabilizado && pUbicar > 0) await registrarUbicadosHoy(pUbicar);
     const id = row.id;
     data.splice(i, 1);
     render();
     const { error: delErr } = await sb.from('expediciones').delete().eq('id', id);
     if (delErr) { alert('Error al eliminar.'); loadData(); }
     histLoaded = false;
-  }
-
-  async function saveUbicados(i, newVal, oldVal) {
-    const delta = (Number(oldVal)||0) - (Number(newVal)||0);
-    if (delta !== 0) await registrarUbicadosHoy(delta);
-    await save(i, 'p_ubicar', newVal);
   }
 
   async function registrarUbicadosHoy(delta) {
@@ -1090,12 +1148,17 @@
   }
   function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
   async function saveNew() {
+    // P. por ubicar por defecto = total; ubicados es siempre el resto
+    const total  = Math.max(0, Number(document.getElementById('fPalets').value) || 0);
+    const rawPUb = document.getElementById('fPUbicar').value;
+    const pUb    = rawPUb === '' ? total : Math.max(0, Math.min(total, Number(rawPUb) || 0));
     const row = {
       fecha:    document.getElementById('fFecha').value   || null,
       dest:     document.getElementById('fDest').value.trim().toUpperCase(),
       factura:  document.getElementById('fFactura').value.trim(),
-      palets:   Number(document.getElementById('fPalets').value)  || 0,
-      p_ubicar: Number(document.getElementById('fPUbicar').value) || 0,
+      palets:   total,
+      p_ubicar: pUb,
+      ubicados: total - pUb,
       calle:    document.getElementById('fCalle').value.trim(),
       obs:      document.getElementById('fObs').value.trim(),
       estado:   document.getElementById('fEstado').value,
@@ -1242,15 +1305,16 @@
       const exps  = Array.isArray(c.expediciones) ? c.expediciones : [];
       const expCards = exps.length
         ? exps.map(e => {
-            const st = e.estado || 'en_transito';
+            const st = normEstado(e.estado);
             const pend = Number(e.p_ubicar) || 0;
+            const ubic = Number(e.ubicados) || 0;
             return `<div class="exp-row">
               <div class="exp-row-main">
                 <span class="exp-dest">${esc(e.dest) || '—'}</span>
                 <span class="exp-fact">${esc(e.factura) || '—'}</span>
               </div>
               <div class="exp-row-sub">
-                <span class="exp-meta"><b>${e.palets || 0}</b> palets${pend ? ` · <b style="color:var(--warn)">${pend}</b> pend.` : ''}</span>
+                <span class="exp-meta"><b>${e.palets || 0}</b> palets · <b style="color:var(--accent)">${ubic}</b> ubic.${pend ? ` · <b style="color:var(--warn)">${pend}</b> pend.` : ''}</span>
                 <span class="estado-badge estado-${st}">${statusLabel(st)}</span>
               </div>
             </div>`;
@@ -1455,13 +1519,18 @@
       { header: 'Destinatario',            key: 'dest' },
       { header: 'Factura',                 key: 'factura' },
       { header: 'Total Palets',            key: 'palets' },
+      { header: 'Ubicados',                key: 'ubicados' },
+      { header: 'P. por ubicar',           key: 'p_ubicar' },
       { header: 'Observaciones',           key: 'obs' },
       { header: 'Estado de la factura',    key: 'estado' },
     ];
 
     rows.forEach(r => ws.addRow({
       fecha: r.fecha, dest: r.dest, factura: r.factura,
-      palets: r.palets, obs: r.obs, estado: estadoPlano(r.estado),
+      palets: Number(r.palets) || 0,
+      ubicados: Number(r.ubicados) || 0,
+      p_ubicar: Number(r.p_ubicar) || 0,
+      obs: r.obs, estado: estadoPlano(r.estado),
     }));
 
     ws.getRow(1).eachCell(cell => {
@@ -1487,7 +1556,7 @@
       col.width = Math.min(Math.max(maxLen + 2, 10), 50);
     });
 
-    ws.autoFilter = 'A1:F1';
+    ws.autoFilter = 'A1:H1';
     ws.views = [{ state: 'frozen', ySplit: 1 }];
 
     const buffer = await wb.xlsx.writeBuffer();

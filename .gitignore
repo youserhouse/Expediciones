@@ -1,3 +1,7 @@
 .claude/
 .mcp.json
 *.local
+.tmp/
+.env
+credentials.json
+token.json
