@@ -19,6 +19,8 @@
 
 ### Registro de aprendizajes
 
+- **2026-08-07 — CDN bloqueado en el entorno cloud:** El navegador del sandbox no pasa por el proxy HTTPS, así que jsdelivr y Google Fonts fallan y `supabase is not defined` rompe el `<script>` entero (las funciones declaradas siguen existiendo, pero los `let` quedan en TDZ). **Por qué importa:** para probar `index.html` con Playwright hay que interceptar `**/cdn.jsdelivr.net/**` con un stub de `supabase.createClient`, y lanzar Chromium con `executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`.
+- **2026-08-07 — `palets` es el total original, nunca se descuenta:** La invariante del tablero es `ubicados + p_ubicar = palets`; editar Ubicados o P. por ubicar recalcula el otro. **Por qué importa:** si `palets` se descontara al ubicar, esa columna sería idéntica a `p_ubicar` y los KPIs "Total Palets" y "Pendientes Ubicar" medirían exactamente lo mismo.
 - **2026-08-07 — Arquitectura de agente inicializada:** Se creó la estructura de 3 capas (`directives/`, `execution/`, `.tmp/`) en el repo Expediciones. **Por qué importa:** el agente debe buscar directivas en `directives/` y scripts en `execution/` antes de improvisar soluciones ad-hoc.
 
 <!-- Agrega nuevas entradas arriba de esta línea. -->
@@ -145,7 +147,23 @@ The key is a publishable (anon) key; Row Level Security enforces that only authe
 ### Database schema
 
 **`expediciones`** — active shipments:
-- `id` uuid PK, `fecha` date, `dest` text (destination), `factura` text (invoice), `palets` int (total pallets), `p_ubicar` int (pallets still to locate), `calle` text (warehouse aisle), `obs` text (notes), `estado` text CHECK (`'en_preparacion'|'en_transito'|'entregado'`)
+- `id` uuid PK, `fecha` date, `dest` text (destination), `factura` text (invoice), `palets` int (**original** invoice total — never decremented), `ubicados` int (pallets already located), `p_ubicar` int (pallets still to locate), `calle` text (warehouse aisle), `obs` text (notes), `estado` text CHECK (`'en_transito'|'recepcion'|'en_preparacion'|'completado'`)
+- **Invariant**: `ubicados + p_ubicar = palets`, enforced both in JS (`editarReposicion`, `guardarFila`) and by the `expediciones_coherencia_check` constraint.
+
+### Estado flow
+
+`en_transito` → `recepcion` → `en_preparacion` → `completado`
+
+UI labels differ from the DB values: `en_preparacion` displays as **"Reponer"** and `completado` as **"Completo"**. `normEstado()` maps legacy values (`pendiente`/`ok`/`tarde`) onto the current set, so old `historial_cierres` snapshots still render.
+
+| Estado | Total Palets | Ubicados / P. por ubicar |
+|--------|--------------|--------------------------|
+| En tránsito | locked (pencil unlocks) | locked |
+| Recepción | locked (pencil unlocks) | locked |
+| Reponer | locked (pencil unlocks) | **editable** |
+| Completo | — archives the invoice immediately | — |
+
+Reaching `p_ubicar = 0` in Reponer auto-archives the invoice: it moves to `historial_cierres` and disappears from the board.
 
 **`historial_cierres`** — snapshots created when the board is "cleared":
 - `id` uuid, `cerrado_at` timestamptz, `total_facturas`, `total_palets`, `total_pendientes` int, `expediciones` jsonb (full snapshot)
@@ -158,9 +176,9 @@ All tables have RLS enabled. Realtime is enabled on `expediciones` for cross-tab
 ### Key JavaScript conventions
 
 - **XSS prevention**: all user-generated content rendered through `esc()` (HTML-escapes `&`, `<`, `>`, `"`, `'`).
-- **Pencil-edit mode**: gated fields (fecha, dest, factura, calle, obs) are `disabled` by default; clicking the pencil icon calls `toggleEditRow(i)` to enable them and show a save button. `palets` is always editable on `en_preparacion` rows; on `en_transito` rows it is locked but the pencil also unlocks it.
-- **Inline editing for p_ubicar**: blur on the `ci-num` input calls `saveUbicados(i, newVal, oldVal)`, which computes the delta and updates `historial_ubicados_dia` via upsert.
-- **KPIs**: computed on the fly from the in-memory `data` array after every load. `kpiHoy` reads today's row from `historial_ubicados_dia`.
+- **Pencil-edit mode**: gated fields (fecha, dest, factura, **palets**, calle, obs) are `disabled` by default; clicking the pencil icon calls `toggleEditRow(i)` to enable them and show a save button. `palets` is only ever editable through the pencil (in any estado) or at registration — never inline. Saving routes through `guardarFila()`, which rewrites `p_ubicar` from the new total while preserving `ubicados`.
+- **Coupled editing of ubicados / p_ubicar**: blur on either input calls `editarReposicion(i, campo, val)`. It clamps the value to `[0, palets]`, derives the other field, persists both in one update, applies the difference to today's `historial_ubicados_dia` row, and auto-archives when `p_ubicar` hits 0. Editing is only enabled in `en_preparacion`.
+- **KPIs**: computed on the fly from the in-memory `data` array after every load. `kpiHoy` reads today's row from `historial_ubicados_dia`. `Total Palets`, `Pendientes Ubicar` and `Ubicados` are scoped to `en_preparacion` rows only; `Palets en Tránsito` and `Palets en Recepción` sum `palets` for their respective estados.
 - **Historial panels**: data loaded once into `histAllCierres` / `histAllUbicados`; client-side `filterByDate()` re-renders the filtered accordion without extra DB calls.
 - **Mobile vs desktop**: `renderMobile()` generates card-based HTML (shown below 700 px); `renderTable()` builds `<tr>` rows (shown above 700 px). Both are called on every `loadData()`.
 
@@ -173,9 +191,12 @@ All tables have RLS enabled. Realtime is enabled on `expediciones` for cross-tab
 
 ## Recent changes (context)
 
-- **Pencil-edit gate** — fields `fecha/dest/factura/calle/obs` disabled by default; pencil enables them + shows save button. Cancel reverts via `data-orig`.
-- **`palets` editable on en_transito via pencil** — pencil now also unlocks `palets` for locked rows; blur-save is skipped while save button is visible to avoid saving before cancel.
-- **KPI "Ubicados Hoy" bidirectional** — `saveUbicados` computes `delta = oldVal - newVal`; applies positive (more located) or negative (un-located) delta to today's `historial_ubicados_dia` row; result clamped to ≥ 0.
+- **New `recepcion` estado + `Reponer`/`Completo` labels** — the flow is now `en_transito → recepcion → en_preparacion → completado`. Recepción behaves exactly like tránsito (everything locked); it only records that the goods arrived. DB values were left untouched apart from adding `recepcion`, so no historical data had to be migrated.
+- **New `Ubicados` column** — coupled to `P. por ubicar` so that `ubicados + p_ubicar = palets` always holds. Entering either one derives the other, which makes states like "8 located + 5 pending on a 10-pallet invoice" unrepresentable.
+- **`Total Palets` is now read-only on the board** — it holds the original invoice total and is only editable at registration or through the pencil. It no longer counts down, which keeps it distinct from `P. por ubicar`.
+- **Auto-archive at zero** — when `p_ubicar` reaches 0 the invoice is snapshotted to `historial_cierres` and removed from the board without any extra click.
+- **New KPI "Palets en Recepción"** — sums `palets` across `recepcion` rows. The KPI grid switched to `auto-fit`/`minmax` to absorb the sixth card.
+- **KPI "Ubicados Hoy" bidirectional** — `editarReposicion` computes `delta = nuevoUbicados - ubicadosPrevios`; applies positive (more located) or negative (un-located) delta to today's `historial_ubicados_dia` row; result clamped to ≥ 0.
 - **Accordion + ⚙ filter in both historial panels** — each item collapses to date + key stat, expands on click; gear button opens date filter bar (Todo / 3 meses / Este mes / Última semana); filtering is client-side from in-memory cache.
 - **Historial facturas detail redesigned as cards** — each expedición inside a cierre shows as a 2-line card (destino + factura number on line 1, palets + estado badge on line 2) instead of a 5-column table; fits the 440 px panel without squishing. Detail scrolls vertically if many rows.
 
@@ -191,4 +212,14 @@ supabase db push  # or paste setup.sql into the dashboard SQL editor
 # paste update_rls.sql into the dashboard SQL editor
 ```
 
-`setup.sql` creates tables and enables realtime. `update_rls.sql` drops the public-access policy and replaces it with an authenticated-users-only policy.
+Apply them in this order:
+
+| File | What it does |
+|------|--------------|
+| `setup.sql` | Creates tables, enables realtime |
+| `update_rls.sql` | Replaces the public-access policy with an authenticated-users-only one |
+| `alter_estados.sql` | Migrates the legacy `pendiente/ok/tarde` values to `en_transito/completado/en_preparacion` |
+| `create_historial_ubicados.sql`, `add_nota_historial_ubicados.sql` | Daily located-pallet table and its `nota` column |
+| `add_recepcion_ubicados.sql` | Adds the `recepcion` estado, the `ubicados` column, backfills existing rows and enforces the coherence constraint |
+
+`add_recepcion_ubicados.sql` is idempotent and safe to re-run. Its last statement adds `expediciones_coherencia_check`; skip that block if you would rather validate the invariant only in the app.
