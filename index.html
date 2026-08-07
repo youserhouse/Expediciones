@@ -295,10 +295,10 @@
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
   .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-completado     { background: rgba(0,229,160,.12); color: var(--accent); }
-  .estado-en_preparacion { background: rgba(0,153,255,.12); color: var(--accent2); }
+  .estado-completado     { background: rgba(255,77,109,.12); color: var(--danger); }
+  .estado-en_preparacion { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-recepcion       { background: rgba(34,211,238,.12); color: var(--cyan); }
+  .estado-recepcion       { background: rgba(0,153,255,.12); color: var(--accent2); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -381,9 +381,9 @@
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="recepcion"]      { color:var(--cyan);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_preparacion"] { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="completado"]     { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="recepcion"]      { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_preparacion"] { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="completado"]     { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
@@ -777,20 +777,20 @@
   }
 
   // ===== ESTADOS =====
-  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Completo)
+  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Factura finalizada)
   const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
   const ESTADO_TEXT = {
     en_transito:    'En tránsito',
     recepcion:      'Recepción',
     en_preparacion: 'Reponer',
-    completado:     'Completo',
+    completado:     'Factura finalizada',
   };
   const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
   const ESTADO_COLOR = {
     en_transito:    'var(--warn)',
-    recepcion:      'var(--cyan)',
-    en_preparacion: 'var(--accent2)',
-    completado:     'var(--accent)',
+    recepcion:      'var(--accent2)',
+    en_preparacion: 'var(--accent)',
+    completado:     'var(--danger)',
   };
 
   // Normaliza los valores antiguos que puedan quedar en el histórico
@@ -805,7 +805,7 @@
 
   function estadoOptions(sel) {
     const s = normEstado(sel);
-    // "Completo" archiva la factura, por eso se ofrece también en la tabla
+    // "Factura finalizada" archiva la factura, por eso se ofrece también en la tabla
     return ESTADOS.map(v => `<option value="${v}" ${s===v?'selected':''}>${ESTADO_TEXT[v]}</option>`).join('');
   }
 
@@ -819,7 +819,7 @@
     const totalPendientes      = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const totalUbicados        = enPrep.reduce((s,r) => s + (Number(r.ubicados) || 0), 0);
     const totalPaletsTransito  = sumPalets(enTransit);
-    const totalPaletsRecepcion = sumPalets(enRecep);
+    const totalPaletsRecepcion = enRecep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const nEnTransito = enTransit.length, nEnRecep = enRecep.length, nEnPrep = enPrep.length;
 
     document.getElementById('kpiFacturas').textContent        = data.length;
