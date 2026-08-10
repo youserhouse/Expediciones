@@ -19,6 +19,9 @@
 
 ### Registro de aprendizajes
 
+- **2026-08-07 — Verificación de UI sin credenciales reales:** Para probar cambios visuales (colores por estado, KPIs) sin tener login real de Supabase, sirve levantar `python -m http.server`, abrir en el navegador, y en la consola forzar `loginScreen.classList.add('hidden')` + `appContent.classList.add('visible')`, luego asignar un `data` de prueba a mano y llamar `render()`. Las funciones globales del `<script>` son accesibles aunque el login no haya ocurrido — solo la visibilidad del DOM depende de la sesión. **Por qué importa:** permite verificar cambios de CSS/JS reales (vía `getComputedStyle`) en vez de solo razonar sobre el código, sin tocar la base de datos ni pedir credenciales al usuario.
+- **2026-08-07 — KPI "Palets en Recepción" tenía la fórmula equivocada:** Sumaba `palets` (el total original de la factura) en vez de `p_ubicar` (lo que de verdad queda pendiente). Como en Recepción todo está bloqueado, en la práctica casi siempre `p_ubicar ≈ palets` en filas recién llegadas, así que el error no era obvio a simple vista salvo cuando una fila entraba a Recepción con `ubicados` ya mayor a 0. **Por qué importa:** al tocar cualquier KPI, verificar contra qué columna se agrega (`palets` = total original inmutable, `p_ubicar` = lo pendiente real) — son fáciles de confundir porque ambos son "el número grande" en la mayoría de filas.
+- **2026-08-07 — Colores de estado eran una rotación arbitraria, no semántica:** `en_preparacion` (Reponer) usaba azul, `completado` usaba verde, `recepcion` usaba cyan — ninguno con relación intuitiva al significado. El usuario pidió mapeo semántico: amarillo=tránsito, azul=recepción, verde=reponer, rojo=completado/factura finalizada. Las variables CSS ya existían (`--warn`, `--accent2`, `--accent`, `--danger`) — solo hubo que reasignarlas, sin inventar colores nuevos. **Por qué importa:** hay 3 lugares que deben mantenerse sincronizados al tocar colores de estado: `ESTADO_COLOR`/`ESTADO_TEXT` (JS, usado en tarjetas móviles), `select.ci[data-v="..."]` (CSS, dropdown desktop/mobile), y `.estado-*` (CSS, badges del historial).
 - **2026-08-07 — CDN bloqueado en el entorno cloud:** El navegador del sandbox no pasa por el proxy HTTPS, así que jsdelivr y Google Fonts fallan y `supabase is not defined` rompe el `<script>` entero (las funciones declaradas siguen existiendo, pero los `let` quedan en TDZ). **Por qué importa:** para probar `index.html` con Playwright hay que interceptar `**/cdn.jsdelivr.net/**` con un stub de `supabase.createClient`, y lanzar Chromium con `executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`.
 - **2026-08-07 — `palets` es el total original, nunca se descuenta:** La invariante del tablero es `ubicados + p_ubicar = palets`; editar Ubicados o P. por ubicar recalcula el otro. **Por qué importa:** si `palets` se descontara al ubicar, esa columna sería idéntica a `p_ubicar` y los KPIs "Total Palets" y "Pendientes Ubicar" medirían exactamente lo mismo.
 - **2026-08-07 — Arquitectura de agente inicializada:** Se creó la estructura de 3 capas (`directives/`, `execution/`, `.tmp/`) en el repo Expediciones. **Por qué importa:** el agente debe buscar directivas en `directives/` y scripts en `execution/` antes de improvisar soluciones ad-hoc.
@@ -154,14 +157,14 @@ The key is a publishable (anon) key; Row Level Security enforces that only authe
 
 `en_transito` → `recepcion` → `en_preparacion` → `completado`
 
-UI labels differ from the DB values: `en_preparacion` displays as **"Reponer"** and `completado` as **"Completo"**. `normEstado()` maps legacy values (`pendiente`/`ok`/`tarde`) onto the current set, so old `historial_cierres` snapshots still render.
+UI labels differ from the DB values: `en_preparacion` displays as **"Reponer"** and `completado` as **"Factura finalizada"**. `normEstado()` maps legacy values (`pendiente`/`ok`/`tarde`) onto the current set, so old `historial_cierres` snapshots still render. Each estado also has a fixed semantic color (`ESTADO_COLOR` in the script, mirrored in the `select.ci[data-v]` and `.estado-*` CSS rules): `en_transito` amber/`--warn`, `recepcion` blue/`--accent2`, `en_preparacion` green/`--accent`, `completado` red/`--danger`.
 
 | Estado | Total Palets | Ubicados / P. por ubicar |
 |--------|--------------|--------------------------|
 | En tránsito | locked (pencil unlocks) | locked |
 | Recepción | locked (pencil unlocks) | locked |
 | Reponer | locked (pencil unlocks) | **editable** |
-| Completo | — archives the invoice immediately | — |
+| Factura finalizada | — archives the invoice immediately | — |
 
 Reaching `p_ubicar = 0` in Reponer auto-archives the invoice: it moves to `historial_cierres` and disappears from the board.
 
@@ -178,7 +181,7 @@ All tables have RLS enabled. Realtime is enabled on `expediciones` for cross-tab
 - **XSS prevention**: all user-generated content rendered through `esc()` (HTML-escapes `&`, `<`, `>`, `"`, `'`).
 - **Pencil-edit mode**: gated fields (fecha, dest, factura, **palets**, calle, obs) are `disabled` by default; clicking the pencil icon calls `toggleEditRow(i)` to enable them and show a save button. `palets` is only ever editable through the pencil (in any estado) or at registration — never inline. Saving routes through `guardarFila()`, which rewrites `p_ubicar` from the new total while preserving `ubicados`.
 - **Coupled editing of ubicados / p_ubicar**: blur on either input calls `editarReposicion(i, campo, val)`. It clamps the value to `[0, palets]`, derives the other field, persists both in one update, applies the difference to today's `historial_ubicados_dia` row, and auto-archives when `p_ubicar` hits 0. Editing is only enabled in `en_preparacion`.
-- **KPIs**: computed on the fly from the in-memory `data` array after every load. `kpiHoy` reads today's row from `historial_ubicados_dia`. `Total Palets`, `Pendientes Ubicar` and `Ubicados` are scoped to `en_preparacion` rows only; `Palets en Tránsito` and `Palets en Recepción` sum `palets` for their respective estados.
+- **KPIs**: computed on the fly from the in-memory `data` array after every load. `kpiHoy` reads today's row from `historial_ubicados_dia`. `Total Palets`, `Pendientes Ubicar` and `Ubicados` are scoped to `en_preparacion` rows only; `Palets en Tránsito` sums `palets` across `en_transito` rows; `Palets en Recepción` sums `p_ubicar` (not `palets`) across `recepcion` rows, since that's what's actually still pending inside those invoices.
 - **Historial panels**: data loaded once into `histAllCierres` / `histAllUbicados`; client-side `filterByDate()` re-renders the filtered accordion without extra DB calls.
 - **Mobile vs desktop**: `renderMobile()` generates card-based HTML (shown below 700 px); `renderTable()` builds `<tr>` rows (shown above 700 px). Both are called on every `loadData()`.
 
@@ -195,10 +198,12 @@ All tables have RLS enabled. Realtime is enabled on `expediciones` for cross-tab
 - **New `Ubicados` column** — coupled to `P. por ubicar` so that `ubicados + p_ubicar = palets` always holds. Entering either one derives the other, which makes states like "8 located + 5 pending on a 10-pallet invoice" unrepresentable.
 - **`Total Palets` is now read-only on the board** — it holds the original invoice total and is only editable at registration or through the pencil. It no longer counts down, which keeps it distinct from `P. por ubicar`.
 - **Auto-archive at zero** — when `p_ubicar` reaches 0 the invoice is snapshotted to `historial_cierres` and removed from the board without any extra click.
-- **New KPI "Palets en Recepción"** — sums `palets` across `recepcion` rows. The KPI grid switched to `auto-fit`/`minmax` to absorb the sixth card.
+- **New KPI "Palets en Recepción"** — sums `p_ubicar` across `recepcion` rows (originally summed `palets` by mistake, which double-counted the invoice total instead of what's actually still pending; fixed 2026-08-07). The KPI grid switched to `auto-fit`/`minmax` to absorb the sixth card.
 - **KPI "Ubicados Hoy" bidirectional** — `editarReposicion` computes `delta = nuevoUbicados - ubicadosPrevios`; applies positive (more located) or negative (un-located) delta to today's `historial_ubicados_dia` row; result clamped to ≥ 0.
 - **Accordion + ⚙ filter in both historial panels** — each item collapses to date + key stat, expands on click; gear button opens date filter bar (Todo / 3 meses / Este mes / Última semana); filtering is client-side from in-memory cache.
+- **Paginación en ambos historiales** — `.cierre-item` llevaba el `flex-shrink: 1` por defecto dentro del `.hist-list` flex-column, así que con muchos registros las tarjetas se aplastaban unas contra otras en vez de hacer scroll; se fijó `flex-shrink: 0`. Además ambos paneles paginan de 10 en 10 (`HIST_PAGE_SIZE`) con una barra `.hist-pager` («‹ 2/5 · 47 reg. ›») anclada al pie del panel; el paginado es client-side sobre la caché en memoria y se reinicia a la página 1 al cambiar de filtro.
 - **Historial facturas detail redesigned as cards** — each expedición inside a cierre shows as a 2-line card (destino + factura number on line 1, palets + estado badge on line 2) instead of a 5-column table; fits the 440 px panel without squishing. Detail scrolls vertically if many rows.
+- **Estado colors made semantic + `completado` relabeled** — estado text/badges now use a fixed, distinguishable color per stage instead of all reading as similar blue/cyan tones: `en_transito` amber, `recepcion` blue, `en_preparacion` (Reponer) green, `completado` red. `completado`'s display label changed from "Completo" to "Factura finalizada" (DB value `completado` unchanged). Applied in three places kept in sync: `ESTADO_COLOR`/`ESTADO_TEXT` (JS), `select.ci[data-v]` (desktop/mobile dropdown), `.estado-*` (historial badges).
 
 ## Database migrations
 

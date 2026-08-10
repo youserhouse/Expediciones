@@ -254,7 +254,22 @@
   .ubic-count { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; color: var(--warn); }
   .hist-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .hist-empty { text-align: center; color: var(--muted); font-style: italic; padding: 40px 0; font-size: .85rem; }
-  .cierre-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .hist-pager {
+    display: none; align-items: center; justify-content: center; gap: 10px;
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    background: rgba(0,0,0,.12); flex-shrink: 0;
+  }
+  .hist-pager.open { display: flex; }
+  .hp-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; justify-content: center; font-size: .8rem; flex-shrink: 0;
+  }
+  .hp-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.08); }
+  .hp-btn:disabled { opacity: .3; cursor: default; }
+  .hp-info { font-size: .72rem; color: var(--muted); letter-spacing: .5px; min-width: 118px; text-align: center; }
+  .hp-info b { color: var(--text); font-weight: 600; }
+  .cierre-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; flex-shrink: 0; }
   .cierre-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 16px; cursor: pointer; transition: background .15s; user-select: none;
@@ -280,10 +295,10 @@
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
   .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-completado     { background: rgba(0,229,160,.12); color: var(--accent); }
-  .estado-en_preparacion { background: rgba(0,153,255,.12); color: var(--accent2); }
+  .estado-completado     { background: rgba(255,77,109,.12); color: var(--danger); }
+  .estado-en_preparacion { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-recepcion       { background: rgba(34,211,238,.12); color: var(--cyan); }
+  .estado-recepcion       { background: rgba(0,153,255,.12); color: var(--accent2); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -366,9 +381,9 @@
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="recepcion"]      { color:var(--cyan);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_preparacion"] { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="completado"]     { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="recepcion"]      { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_preparacion"] { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="completado"]     { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
@@ -641,6 +656,7 @@
   <div class="hist-list" id="histList">
     <div class="hist-empty">Sin registros</div>
   </div>
+  <div class="hist-pager" id="histPager"></div>
 </div>
 
 <!-- HISTORIAL UBICADOS POR DÍA PANEL -->
@@ -665,6 +681,7 @@
   <div class="hist-list" id="histUbicList">
     <div class="hist-empty">Sin registros</div>
   </div>
+  <div class="hist-pager" id="histUbicPager"></div>
 </div>
 
 <script>
@@ -688,6 +705,9 @@
   let histUbicFilter = 'all';
   let histAllCierres = [];
   let histAllUbicados = [];
+  const HIST_PAGE_SIZE = 10;
+  let histPage = 1;
+  let histUbicPage = 1;
   document.getElementById('histGearBtn').innerHTML    = ICON_GEAR;
   document.getElementById('histUbicGearBtn').innerHTML = ICON_GEAR;
 
@@ -757,20 +777,20 @@
   }
 
   // ===== ESTADOS =====
-  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Completo)
+  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Factura finalizada)
   const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
   const ESTADO_TEXT = {
     en_transito:    'En tránsito',
     recepcion:      'Recepción',
     en_preparacion: 'Reponer',
-    completado:     'Completo',
+    completado:     'Factura finalizada',
   };
   const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
   const ESTADO_COLOR = {
     en_transito:    'var(--warn)',
-    recepcion:      'var(--cyan)',
-    en_preparacion: 'var(--accent2)',
-    completado:     'var(--accent)',
+    recepcion:      'var(--accent2)',
+    en_preparacion: 'var(--accent)',
+    completado:     'var(--danger)',
   };
 
   // Normaliza los valores antiguos que puedan quedar en el histórico
@@ -785,7 +805,7 @@
 
   function estadoOptions(sel) {
     const s = normEstado(sel);
-    // "Completo" archiva la factura, por eso se ofrece también en la tabla
+    // "Factura finalizada" archiva la factura, por eso se ofrece también en la tabla
     return ESTADOS.map(v => `<option value="${v}" ${s===v?'selected':''}>${ESTADO_TEXT[v]}</option>`).join('');
   }
 
@@ -799,7 +819,7 @@
     const totalPendientes      = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const totalUbicados        = enPrep.reduce((s,r) => s + (Number(r.ubicados) || 0), 0);
     const totalPaletsTransito  = sumPalets(enTransit);
-    const totalPaletsRecepcion = sumPalets(enRecep);
+    const totalPaletsRecepcion = enRecep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const nEnTransito = enTransit.length, nEnRecep = enRecep.length, nEnPrep = enPrep.length;
 
     document.getElementById('kpiFacturas').textContent        = data.length;
@@ -1214,16 +1234,36 @@
   }
   function setHistFilter(filter, btn) {
     histFilter = filter;
+    histPage = 1;
     document.querySelectorAll('#histFilterBar .hf-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderHistCierres();
   }
   function setHistUbicFilter(filter, btn) {
     histUbicFilter = filter;
+    histUbicPage = 1;
     document.querySelectorAll('#histUbicFilterBar .hf-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderHistUbicados();
   }
+
+  // ===== PAGINACIÓN DE LOS HISTORIALES =====
+  function totalHistPages(count) { return Math.max(1, Math.ceil(count / HIST_PAGE_SIZE)); }
+
+  function renderPager(pagerId, page, totalPages, total, navFn) {
+    const pager = document.getElementById(pagerId);
+    if (totalPages <= 1) { pager.innerHTML = ''; pager.classList.remove('open'); return; }
+    pager.innerHTML = `
+      <button class="hp-btn" onclick="${navFn}(1)" ${page === 1 ? 'disabled' : ''} title="Primera página">«</button>
+      <button class="hp-btn" onclick="${navFn}(${page - 1})" ${page === 1 ? 'disabled' : ''} title="Anterior">‹</button>
+      <span class="hp-info"><b>${page}</b> / <b>${totalPages}</b> · ${total} reg.</span>
+      <button class="hp-btn" onclick="${navFn}(${page + 1})" ${page === totalPages ? 'disabled' : ''} title="Siguiente">›</button>
+      <button class="hp-btn" onclick="${navFn}(${totalPages})" ${page === totalPages ? 'disabled' : ''} title="Última página">»</button>`;
+    pager.classList.add('open');
+  }
+
+  function goHistPage(p)     { histPage = p;     renderHistCierres(); }
+  function goHistUbicPage(p) { histUbicPage = p; renderHistUbicados(); }
 
   function toggleHistorial() {
     document.getElementById('histUbicPanel').classList.remove('open');
@@ -1242,6 +1282,7 @@
       .from('historial_cierres').select('*').order('cerrado_at', { ascending: false }).limit(200);
     if (error) { list.innerHTML = `<div class="hist-empty" style="color:var(--danger)">Error: ${error.message}</div>`; return; }
     histLoaded = true;
+    histPage = 1;
     histAllCierres = cierres || [];
     renderHistCierres();
   }
@@ -1249,8 +1290,15 @@
   function renderHistCierres() {
     const list = document.getElementById('histList');
     const filtered = filterByDate(histAllCierres, 'cerrado_at', histFilter);
-    if (!filtered.length) { list.innerHTML = '<div class="hist-empty">Sin facturas para este período</div>'; return; }
-    list.innerHTML = filtered.map(c => {
+    const totalPages = totalHistPages(filtered.length);
+    histPage = Math.min(Math.max(1, histPage), totalPages);
+    if (!filtered.length) {
+      list.innerHTML = '<div class="hist-empty">Sin facturas para este período</div>';
+      renderPager('histPager', 1, 1, 0, 'goHistPage');
+      return;
+    }
+    const pageItems = filtered.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE);
+    list.innerHTML = pageItems.map(c => {
       const d     = new Date(c.cerrado_at);
       const fecha = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
       const hora  = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -1291,6 +1339,8 @@
           <div class="cierre-detail">${expCards}</div>
         </div>`;
     }).join('');
+    list.scrollTop = 0;
+    renderPager('histPager', histPage, totalPages, filtered.length, 'goHistPage');
   }
 
   function toggleCierreDetail(id) {
@@ -1323,6 +1373,7 @@
       .from('historial_ubicados_dia').select('*').order('fecha', { ascending: false }).limit(365);
     if (error) { list.innerHTML = `<div class="hist-empty" style="color:var(--danger)">Error: ${error.message}</div>`; return; }
     histUbicLoaded = true;
+    histUbicPage = 1;
     histAllUbicados = rows || [];
     renderHistUbicados();
   }
@@ -1330,8 +1381,15 @@
   function renderHistUbicados() {
     const list = document.getElementById('histUbicList');
     const filtered = filterByDate(histAllUbicados, 'fecha', histUbicFilter);
-    if (!filtered.length) { list.innerHTML = '<div class="hist-empty">Sin registros para este período</div>'; return; }
-    list.innerHTML = filtered.map(r => {
+    const totalPages = totalHistPages(filtered.length);
+    histUbicPage = Math.min(Math.max(1, histUbicPage), totalPages);
+    if (!filtered.length) {
+      list.innerHTML = '<div class="hist-empty">Sin registros para este período</div>';
+      renderPager('histUbicPager', 1, 1, 0, 'goHistUbicPage');
+      return;
+    }
+    const pageItems = filtered.slice((histUbicPage - 1) * HIST_PAGE_SIZE, histUbicPage * HIST_PAGE_SIZE);
+    list.innerHTML = pageItems.map(r => {
       const isToday  = r.fecha === todayISO;
       const d        = new Date(r.fecha + 'T12:00:00');
       const fechaStr = d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
@@ -1363,6 +1421,8 @@
           </div>
         </div>`;
     }).join('');
+    list.scrollTop = 0;
+    renderPager('histUbicPager', histUbicPage, totalPages, filtered.length, 'goHistUbicPage');
   }
 
   function toggleUbicDetail(id) {
