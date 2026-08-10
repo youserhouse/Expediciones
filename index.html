@@ -370,6 +370,11 @@
     color:var(--warn) !important; max-width:60px; text-align:center;
   }
   .ci-palets:focus { color:var(--warn) !important; }
+  .hc-fields { display:flex; gap:8px; padding:10px 16px 0; }
+  .hc-field  { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .hc-field > span { font-size:.55rem; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; white-space:nowrap; }
+  .hc-field .ci { font-family:'Bebas Neue',sans-serif !important; font-size:1.2rem !important; text-align:center; }
+  .ci-hc-pend, .ci-hc-pend:focus { color:var(--warn) !important; }
   .ci-nota { font-size:.75rem !important; color:var(--muted) !important; font-style:italic; }
   .ci-nota::placeholder { color:var(--muted); opacity:.5; font-style:italic; }
   select.ci { cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px;
@@ -1317,20 +1322,31 @@
             </div>`;
           }).join('')
         : '<div style="padding:14px 16px;color:var(--muted);font-size:.78rem;">Sin expediciones registradas</div>';
+      const nFact = Number(c.total_facturas)   || 0;
+      const nPal  = Number(c.total_palets)     || 0;
+      const nPend = Number(c.total_pendientes) || 0;
       return `
         <div class="cierre-item" id="cierre-${c.id}">
           <div class="cierre-head" onclick="toggleCierreDetail('${c.id}')">
             <div>
               <div class="cierre-date">${fecha} · ${hora}</div>
               <div class="cierre-stats">
-                <div class="cierre-stat"><b>${c.total_facturas}</b> facturas</div>
-                <div class="cierre-stat"><b>${c.total_palets}</b> palets</div>
-                <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
+                <div class="cierre-stat"><b id="hc-fact-${c.id}">${nFact}</b> facturas</div>
+                <div class="cierre-stat"><b id="hc-pal-${c.id}">${nPal}</b> palets</div>
+                <div class="cierre-stat" style="color:var(--warn)"><b id="hc-pend-${c.id}">${nPend}</b> pendientes</div>
               </div>
             </div>
             <span class="cierre-chevron">▼</span>
           </div>
           <div class="cierre-detail">
+            <div class="hc-fields">
+              <label class="hc-field"><span>Facturas</span>
+                <input class="ci ci-hc-fact" type="number" min="0" value="${nFact}" data-orig="${nFact}" disabled></label>
+              <label class="hc-field"><span>Palets</span>
+                <input class="ci ci-hc-pal" type="number" min="0" value="${nPal}" data-orig="${nPal}" disabled></label>
+              <label class="hc-field"><span>Pendientes</span>
+                <input class="ci ci-hc-pend" type="number" min="0" value="${nPend}" data-orig="${nPend}" disabled></label>
+            </div>
             <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
               <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(c.nota)}" data-orig="${esc(c.nota)}" style="flex:1;" disabled>
               <button class="edit-btn" onclick="event.stopPropagation();toggleEditHistCierre('${c.id}')" title="Editar">${ICON_PENCIL}</button>
@@ -1349,37 +1365,58 @@
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
   }
 
+  // Campos editables de un cierre: los 3 totales + la nota
+  const HC_FIELDS = '.ci-hc-fact, .ci-hc-pal, .ci-hc-pend, .ci-nota';
+
   function toggleEditHistCierre(id) {
-    const card    = document.getElementById('cierre-' + id);
-    const nota    = card.querySelector('.ci-nota');
-    const editBtn = card.querySelector('.edit-btn');
-    const saveBtn = card.querySelector('.save-btn');
-    const entering = nota.disabled;
-    if (entering) {
-      nota.disabled = false;
-      editBtn.title = 'Cancelar edición';
-      saveBtn.style.display = 'inline-flex';
-      nota.focus();
-    } else {
-      nota.value = nota.dataset.orig;
-      nota.disabled = true;
-      editBtn.title = 'Editar';
-      saveBtn.style.display = 'none';
-    }
+    const card     = document.getElementById('cierre-' + id);
+    const fields   = card.querySelectorAll(HC_FIELDS);
+    const editBtn  = card.querySelector('.edit-btn');
+    const saveBtn  = card.querySelector('.save-btn');
+    const entering = fields[0].disabled;
+    fields.forEach(f => {
+      if (!entering) f.value = f.dataset.orig;   // cancelar: restaurar original
+      f.disabled = !entering;
+    });
+    editBtn.title = entering ? 'Cancelar edición' : 'Editar';
+    saveBtn.style.display = entering ? 'inline-flex' : 'none';
+    if (entering) fields[0].focus();
   }
 
   async function saveHistCierre(id) {
-    const card    = document.getElementById('cierre-' + id);
-    const nota    = card.querySelector('.ci-nota');
-    const notaVal = nota.value === '' ? null : nota.value;
-    const { error } = await sb.from('historial_cierres').update({ nota: notaVal }).eq('id', id);
+    const card = document.getElementById('cierre-' + id);
+    const fact = card.querySelector('.ci-hc-fact');
+    const pal  = card.querySelector('.ci-hc-pal');
+    const pend = card.querySelector('.ci-hc-pend');
+    const nota = card.querySelector('.ci-nota');
+
+    const entero = v => Math.max(0, Math.trunc(Number(v) || 0));
+    const nFact  = entero(fact.value);
+    const nPal   = entero(pal.value);
+    // Pendientes nunca puede superar el total de palets del cierre
+    const nPend  = Math.min(entero(pend.value), nPal);
+
+    const payload = {
+      total_facturas:   nFact,
+      total_palets:     nPal,
+      total_pendientes: nPend,
+      nota:             nota.value === '' ? null : nota.value,
+    };
+    const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
-    nota.dataset.orig = notaVal || '';
-    nota.disabled = true;
+
+    fact.value = nFact; pal.value = nPal; pend.value = nPend;
+    [[fact, nFact], [pal, nPal], [pend, nPend], [nota, payload.nota || '']]
+      .forEach(([f, v]) => { f.dataset.orig = v; f.disabled = true; });
     card.querySelector('.edit-btn').title = 'Editar';
     card.querySelector('.save-btn').style.display = 'none';
+
+    document.getElementById('hc-fact-' + id).textContent = nFact;
+    document.getElementById('hc-pal-'  + id).textContent = nPal;
+    document.getElementById('hc-pend-' + id).textContent = nPend;
+
     const cached = histAllCierres.find(c => c.id === id);
-    if (cached) cached.nota = notaVal;
+    if (cached) Object.assign(cached, payload);
   }
 
   async function deleteHistorialItem(id) {
