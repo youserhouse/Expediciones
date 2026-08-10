@@ -376,9 +376,6 @@
   .ci-exp-num  { width:auto; max-width:38px; font-size:.68rem !important; padding:1px 3px; text-align:center; }
   .ci-exp-ubic, .ci-exp-ubic:focus { color:var(--accent) !important; font-weight:600; }
   .ci-exp-pend, .ci-exp-pend:focus { color:var(--warn) !important; font-weight:600; }
-  .exp-row-actions { display:flex; justify-content:flex-end; gap:6px; padding-top:4px; }
-  .exp-row .edit-btn, .exp-row .save-btn { width:22px; height:22px; }
-  .exp-row .edit-btn svg, .exp-row .save-btn svg { width:12px; height:12px; }
   .ci-nota::placeholder { color:var(--muted); opacity:.5; font-style:italic; }
   select.ci { cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a6180' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -1327,10 +1324,6 @@
                 </span>
                 <span class="estado-badge estado-${st}">${statusLabel(st)}</span>
               </div>
-              <div class="exp-row-actions">
-                <button class="edit-btn" onclick="event.stopPropagation();toggleEditExp('${c.id}',${idx})" title="Editar">${ICON_PENCIL}</button>
-                <button class="save-btn" onclick="event.stopPropagation();saveExp('${c.id}',${idx})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
-              </div>
             </div>`;
           }).join('')
         : '<div style="padding:14px 16px;color:var(--muted);font-size:.78rem;">Sin expediciones registradas</div>';
@@ -1348,10 +1341,10 @@
             <span class="cierre-chevron">▼</span>
           </div>
           <div class="cierre-detail">
-            <div id="hc-nota-${c.id}" style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
               <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(c.nota)}" data-orig="${esc(c.nota)}" style="flex:1;" disabled>
-              <button class="edit-btn" onclick="event.stopPropagation();toggleEditHistCierre('${c.id}')" title="Editar">${ICON_PENCIL}</button>
-              <button class="save-btn" onclick="event.stopPropagation();saveHistCierre('${c.id}')" title="Guardar" style="display:none;">${ICON_SAVE}</button>
+              <button class="edit-btn" onclick="event.stopPropagation();toggleEditCierre('${c.id}')" title="Editar todo">${ICON_PENCIL}</button>
+              <button class="save-btn" onclick="event.stopPropagation();saveCierre('${c.id}')" title="Guardar todo" style="display:none;">${ICON_SAVE}</button>
               <button class="del-btn" onclick="event.stopPropagation();deleteHistorialItem('${c.id}')" title="Eliminar">✕</button>
             </div>
             ${expCards}
@@ -1366,86 +1359,72 @@
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
   }
 
-  function toggleEditHistCierre(id) {
-    const wrap    = document.getElementById('hc-nota-' + id);
-    const nota    = wrap.querySelector('.ci-nota');
-    const editBtn = wrap.querySelector('.edit-btn');
-    const saveBtn = wrap.querySelector('.save-btn');
-    const entering = nota.disabled;
-    if (entering) {
-      nota.disabled = false;
-      editBtn.title = 'Cancelar edición';
-      saveBtn.style.display = 'inline-flex';
-      nota.focus();
-    } else {
-      nota.value = nota.dataset.orig;
-      nota.disabled = true;
-      editBtn.title = 'Editar';
-      saveBtn.style.display = 'none';
-    }
-  }
+  // Un único lápiz/disquete por cierre edita todo a la vez: la nota + factura/palets/
+  // ubicados/pendientes de cada expedición que contiene. Todo se guarda en una sola
+  // llamada (nota + el array `expediciones` completo reescrito).
+  const CIERRE_EDIT_FIELDS = '.ci-nota, .ci-exp-fact, .ci-exp-pal, .ci-exp-ubic, .ci-exp-pend';
 
-  async function saveHistCierre(id) {
-    const wrap    = document.getElementById('hc-nota-' + id);
-    const nota    = wrap.querySelector('.ci-nota');
-    const notaVal = nota.value === '' ? null : nota.value;
-    const { error } = await sb.from('historial_cierres').update({ nota: notaVal }).eq('id', id);
-    if (error) { alert('Error al guardar: ' + error.message); return; }
-    nota.dataset.orig = notaVal || '';
-    nota.disabled = true;
-    wrap.querySelector('.edit-btn').title = 'Editar';
-    wrap.querySelector('.save-btn').style.display = 'none';
-    const cached = histAllCierres.find(c => c.id === id);
-    if (cached) cached.nota = notaVal;
-  }
-
-  // Campos editables de una expedición dentro de un cierre: factura, palets, ubicados, pendientes.
-  // Se editan y guardan dentro del propio array `expediciones` (jsonb) del cierre.
-  const EXP_FIELDS = '.ci-exp-fact, .ci-exp-pal, .ci-exp-ubic, .ci-exp-pend';
-
-  function toggleEditExp(cierreId, idx) {
-    const row      = document.getElementById(`exp-${cierreId}-${idx}`);
-    const fields   = row.querySelectorAll(EXP_FIELDS);
-    const editBtn  = row.querySelector('.edit-btn');
-    const saveBtn  = row.querySelector('.save-btn');
+  function toggleEditCierre(id) {
+    const card     = document.getElementById('cierre-' + id);
+    const fields   = card.querySelectorAll(CIERRE_EDIT_FIELDS);
+    const editBtn  = card.querySelector('.edit-btn');
+    const saveBtn  = card.querySelector('.save-btn');
     const entering = fields[0].disabled;
     fields.forEach(f => {
-      if (!entering) f.value = f.dataset.orig;   // cancelar: restaurar original
+      if (!entering) f.value = f.dataset.orig;   // cancelar: restaurar todo lo original
       f.disabled = !entering;
     });
-    editBtn.title = entering ? 'Cancelar edición' : 'Editar';
+    editBtn.title = entering ? 'Cancelar edición' : 'Editar todo';
     saveBtn.style.display = entering ? 'inline-flex' : 'none';
     if (entering) fields[0].focus();
   }
 
-  async function saveExp(cierreId, idx) {
-    const row  = document.getElementById(`exp-${cierreId}-${idx}`);
-    const fact = row.querySelector('.ci-exp-fact');
-    const pal  = row.querySelector('.ci-exp-pal');
-    const ubic = row.querySelector('.ci-exp-ubic');
-    const pend = row.querySelector('.ci-exp-pend');
+  async function saveCierre(id) {
+    const card   = document.getElementById('cierre-' + id);
+    const cierre = histAllCierres.find(c => c.id === id);
+    if (!cierre) return;
 
-    const cierre = histAllCierres.find(c => c.id === cierreId);
-    if (!cierre || !Array.isArray(cierre.expediciones) || !cierre.expediciones[idx]) return;
+    const nota    = card.querySelector('.ci-nota');
+    const notaVal = nota.value === '' ? null : nota.value;
 
     const entero = v => Math.max(0, Math.trunc(Number(v) || 0));
-    const nFact  = fact.value.trim() || null;
-    const nPal   = entero(pal.value);
-    const nUbic  = Math.min(entero(ubic.value), nPal);
-    const nPend  = Math.min(entero(pend.value), nPal);
+    const rows = card.querySelectorAll('.exp-row');
+    const exps = Array.isArray(cierre.expediciones) ? [...cierre.expediciones] : [];
+    rows.forEach((row, idx) => {
+      if (!exps[idx]) return;
+      const fact  = row.querySelector('.ci-exp-fact');
+      const pal   = row.querySelector('.ci-exp-pal');
+      const ubic  = row.querySelector('.ci-exp-ubic');
+      const pend  = row.querySelector('.ci-exp-pend');
+      const nPal  = entero(pal.value);
+      const nUbic = Math.min(entero(ubic.value), nPal);
+      const nPend = Math.min(entero(pend.value), nPal);
+      exps[idx] = { ...exps[idx], factura: fact.value.trim() || null, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
+    });
 
-    const exps = [...cierre.expediciones];
-    exps[idx]  = { ...exps[idx], factura: nFact, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
-
-    const { error } = await sb.from('historial_cierres').update({ expediciones: exps }).eq('id', cierreId);
+    const payload = { nota: notaVal, expediciones: exps };
+    const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
 
+    cierre.nota = notaVal;
     cierre.expediciones = exps;
-    fact.value = nFact || ''; pal.value = nPal; ubic.value = nUbic; pend.value = nPend;
-    [[fact, nFact || ''], [pal, nPal], [ubic, nUbic], [pend, nPend]]
-      .forEach(([f, v]) => { f.dataset.orig = v; f.disabled = true; });
-    row.querySelector('.edit-btn').title = 'Editar';
-    row.querySelector('.save-btn').style.display = 'none';
+
+    nota.value = notaVal || ''; nota.dataset.orig = notaVal || '';
+    rows.forEach((row, idx) => {
+      const e = exps[idx];
+      if (!e) return;
+      const fact = row.querySelector('.ci-exp-fact');
+      const pal  = row.querySelector('.ci-exp-pal');
+      const ubic = row.querySelector('.ci-exp-ubic');
+      const pend = row.querySelector('.ci-exp-pend');
+      fact.value = e.factura || ''; fact.dataset.orig = e.factura || '';
+      pal.value  = e.palets;        pal.dataset.orig  = e.palets;
+      ubic.value = e.ubicados;      ubic.dataset.orig = e.ubicados;
+      pend.value = e.p_ubicar;      pend.dataset.orig = e.p_ubicar;
+    });
+    card.querySelectorAll(CIERRE_EDIT_FIELDS).forEach(f => f.disabled = true);
+    card.querySelector('.edit-btn').title = 'Editar todo';
+    card.querySelector('.save-btn').style.display = 'none';
   }
 
   async function deleteHistorialItem(id) {
