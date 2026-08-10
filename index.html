@@ -403,12 +403,6 @@
   }
   .edit-btn:hover, .save-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.08); }
   .edit-btn svg, .save-btn svg { width:15px; height:15px; }
-  .hist-del-btn {
-    background:none; border:1px solid var(--danger); color:var(--danger);
-    border-radius:5px; padding:3px 9px; cursor:pointer; font-size:.72rem;
-    opacity:.65; transition:opacity .15s; flex-shrink:0;
-  }
-  .hist-del-btn:hover { opacity:1; }
   .empty-row td { text-align:center; color:var(--muted); font-style:italic; padding:36px; }
   .loading-row td { text-align:center; color:var(--muted); padding:36px; }
   .error-row td { text-align:center; color:var(--danger); padding:36px; font-size:.85rem; }
@@ -1334,12 +1328,17 @@
                 <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <button class="hist-del-btn" onclick="event.stopPropagation();deleteHistorialItem('${c.id}')">🗑 Eliminar</button>
-              <span class="cierre-chevron">▼</span>
-            </div>
+            <span class="cierre-chevron">▼</span>
           </div>
-          <div class="cierre-detail">${expCards}</div>
+          <div class="cierre-detail">
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
+              <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(c.nota)}" data-orig="${esc(c.nota)}" style="flex:1;" disabled>
+              <button class="edit-btn" onclick="event.stopPropagation();toggleEditHistCierre('${c.id}')" title="Editar">${ICON_PENCIL}</button>
+              <button class="save-btn" onclick="event.stopPropagation();saveHistCierre('${c.id}')" title="Guardar" style="display:none;">${ICON_SAVE}</button>
+              <button class="del-btn" onclick="event.stopPropagation();deleteHistorialItem('${c.id}')" title="Eliminar">✕</button>
+            </div>
+            ${expCards}
+          </div>
         </div>`;
     }).join('');
     list.scrollTop = 0;
@@ -1348,6 +1347,39 @@
 
   function toggleCierreDetail(id) {
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
+  }
+
+  function toggleEditHistCierre(id) {
+    const card    = document.getElementById('cierre-' + id);
+    const nota    = card.querySelector('.ci-nota');
+    const editBtn = card.querySelector('.edit-btn');
+    const saveBtn = card.querySelector('.save-btn');
+    const entering = nota.disabled;
+    if (entering) {
+      nota.disabled = false;
+      editBtn.title = 'Cancelar edición';
+      saveBtn.style.display = 'inline-flex';
+      nota.focus();
+    } else {
+      nota.value = nota.dataset.orig;
+      nota.disabled = true;
+      editBtn.title = 'Editar';
+      saveBtn.style.display = 'none';
+    }
+  }
+
+  async function saveHistCierre(id) {
+    const card    = document.getElementById('cierre-' + id);
+    const nota    = card.querySelector('.ci-nota');
+    const notaVal = nota.value === '' ? null : nota.value;
+    const { error } = await sb.from('historial_cierres').update({ nota: notaVal }).eq('id', id);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    nota.dataset.orig = notaVal || '';
+    nota.disabled = true;
+    card.querySelector('.edit-btn').title = 'Editar';
+    card.querySelector('.save-btn').style.display = 'none';
+    const cached = histAllCierres.find(c => c.id === id);
+    if (cached) cached.nota = notaVal;
   }
 
   async function deleteHistorialItem(id) {
