@@ -289,8 +289,9 @@
   .exp-dest { font-size: .8rem; font-weight: 700; color: var(--text); flex-shrink: 0; }
   .exp-fact { font-size: .68rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
   .exp-row-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .exp-meta { font-size: .68rem; color: var(--muted); }
+  .exp-meta { font-size: .68rem; color: var(--muted); display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
   .exp-meta b { color: var(--text); font-weight: 600; }
+  .exp-field { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
   .estado-badge { font-size: .62rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; }
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
@@ -370,12 +371,14 @@
     color:var(--warn) !important; max-width:60px; text-align:center;
   }
   .ci-palets:focus { color:var(--warn) !important; }
-  .hc-fields { display:flex; gap:8px; padding:10px 16px 0; }
-  .hc-field  { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-  .hc-field > span { font-size:.55rem; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; white-space:nowrap; }
-  .hc-field .ci { font-family:'Bebas Neue',sans-serif !important; font-size:1.2rem !important; text-align:center; }
-  .ci-hc-pend, .ci-hc-pend:focus { color:var(--warn) !important; }
   .ci-nota { font-size:.75rem !important; color:var(--muted) !important; font-style:italic; }
+  .ci-exp-fact { font-family:'JetBrains Mono',monospace !important; font-size:.68rem !important; color:var(--muted) !important; text-align:right; max-width:130px; padding:2px 5px; width:auto; }
+  .ci-exp-num  { width:auto; max-width:38px; font-size:.68rem !important; padding:1px 3px; text-align:center; }
+  .ci-exp-ubic, .ci-exp-ubic:focus { color:var(--accent) !important; font-weight:600; }
+  .ci-exp-pend, .ci-exp-pend:focus { color:var(--warn) !important; font-weight:600; }
+  .exp-row-actions { display:flex; justify-content:flex-end; gap:6px; padding-top:4px; }
+  .exp-row .edit-btn, .exp-row .save-btn { width:22px; height:22px; }
+  .exp-row .edit-btn svg, .exp-row .save-btn svg { width:12px; height:12px; }
   .ci-nota::placeholder { color:var(--muted); opacity:.5; font-style:italic; }
   select.ci { cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a6180' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -1306,48 +1309,46 @@
       const hora  = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       const exps  = Array.isArray(c.expediciones) ? c.expediciones : [];
       const expCards = exps.length
-        ? exps.map(e => {
-            const st = normEstado(e.estado);
-            const pend = Number(e.p_ubicar) || 0;
-            const ubic = Number(e.ubicados) || 0;
-            return `<div class="exp-row">
+        ? exps.map((e, idx) => {
+            const st   = normEstado(e.estado);
+            const pal  = Number(e.palets)    || 0;
+            const ubic = Number(e.ubicados)  || 0;
+            const pend = Number(e.p_ubicar)  || 0;
+            return `<div class="exp-row" id="exp-${c.id}-${idx}">
               <div class="exp-row-main">
                 <span class="exp-dest">${esc(e.dest) || '—'}</span>
-                <span class="exp-fact">${esc(e.factura) || '—'}</span>
+                <input class="ci ci-exp-fact" type="text" placeholder="N° factura" value="${esc(e.factura)}" data-orig="${esc(e.factura)}" disabled>
               </div>
               <div class="exp-row-sub">
-                <span class="exp-meta"><b>${e.palets || 0}</b> palets · <b style="color:var(--accent)">${ubic}</b> ubic.${pend ? ` · <b style="color:var(--warn)">${pend}</b> pend.` : ''}</span>
+                <span class="exp-meta">
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-pal" type="number" min="0" value="${pal}" data-orig="${pal}" disabled> palets</span>
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-ubic" type="number" min="0" value="${ubic}" data-orig="${ubic}" disabled> ubic.</span>
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-pend" type="number" min="0" value="${pend}" data-orig="${pend}" disabled> pend.</span>
+                </span>
                 <span class="estado-badge estado-${st}">${statusLabel(st)}</span>
+              </div>
+              <div class="exp-row-actions">
+                <button class="edit-btn" onclick="event.stopPropagation();toggleEditExp('${c.id}',${idx})" title="Editar">${ICON_PENCIL}</button>
+                <button class="save-btn" onclick="event.stopPropagation();saveExp('${c.id}',${idx})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
               </div>
             </div>`;
           }).join('')
         : '<div style="padding:14px 16px;color:var(--muted);font-size:.78rem;">Sin expediciones registradas</div>';
-      const nFact = Number(c.total_facturas)   || 0;
-      const nPal  = Number(c.total_palets)     || 0;
-      const nPend = Number(c.total_pendientes) || 0;
       return `
         <div class="cierre-item" id="cierre-${c.id}">
           <div class="cierre-head" onclick="toggleCierreDetail('${c.id}')">
             <div>
               <div class="cierre-date">${fecha} · ${hora}</div>
               <div class="cierre-stats">
-                <div class="cierre-stat"><b id="hc-fact-${c.id}">${nFact}</b> facturas</div>
-                <div class="cierre-stat"><b id="hc-pal-${c.id}">${nPal}</b> palets</div>
-                <div class="cierre-stat" style="color:var(--warn)"><b id="hc-pend-${c.id}">${nPend}</b> pendientes</div>
+                <div class="cierre-stat"><b>${c.total_facturas}</b> facturas</div>
+                <div class="cierre-stat"><b>${c.total_palets}</b> palets</div>
+                <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
             <span class="cierre-chevron">▼</span>
           </div>
           <div class="cierre-detail">
-            <div class="hc-fields">
-              <label class="hc-field"><span>Facturas</span>
-                <input class="ci ci-hc-fact" type="number" min="0" value="${nFact}" data-orig="${nFact}" disabled></label>
-              <label class="hc-field"><span>Palets</span>
-                <input class="ci ci-hc-pal" type="number" min="0" value="${nPal}" data-orig="${nPal}" disabled></label>
-              <label class="hc-field"><span>Pendientes</span>
-                <input class="ci ci-hc-pend" type="number" min="0" value="${nPend}" data-orig="${nPend}" disabled></label>
-            </div>
-            <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
+            <div id="hc-nota-${c.id}" style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
               <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(c.nota)}" data-orig="${esc(c.nota)}" style="flex:1;" disabled>
               <button class="edit-btn" onclick="event.stopPropagation();toggleEditHistCierre('${c.id}')" title="Editar">${ICON_PENCIL}</button>
               <button class="save-btn" onclick="event.stopPropagation();saveHistCierre('${c.id}')" title="Guardar" style="display:none;">${ICON_SAVE}</button>
@@ -1365,14 +1366,48 @@
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
   }
 
-  // Campos editables de un cierre: los 3 totales + la nota
-  const HC_FIELDS = '.ci-hc-fact, .ci-hc-pal, .ci-hc-pend, .ci-nota';
-
   function toggleEditHistCierre(id) {
-    const card     = document.getElementById('cierre-' + id);
-    const fields   = card.querySelectorAll(HC_FIELDS);
-    const editBtn  = card.querySelector('.edit-btn');
-    const saveBtn  = card.querySelector('.save-btn');
+    const wrap    = document.getElementById('hc-nota-' + id);
+    const nota    = wrap.querySelector('.ci-nota');
+    const editBtn = wrap.querySelector('.edit-btn');
+    const saveBtn = wrap.querySelector('.save-btn');
+    const entering = nota.disabled;
+    if (entering) {
+      nota.disabled = false;
+      editBtn.title = 'Cancelar edición';
+      saveBtn.style.display = 'inline-flex';
+      nota.focus();
+    } else {
+      nota.value = nota.dataset.orig;
+      nota.disabled = true;
+      editBtn.title = 'Editar';
+      saveBtn.style.display = 'none';
+    }
+  }
+
+  async function saveHistCierre(id) {
+    const wrap    = document.getElementById('hc-nota-' + id);
+    const nota    = wrap.querySelector('.ci-nota');
+    const notaVal = nota.value === '' ? null : nota.value;
+    const { error } = await sb.from('historial_cierres').update({ nota: notaVal }).eq('id', id);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    nota.dataset.orig = notaVal || '';
+    nota.disabled = true;
+    wrap.querySelector('.edit-btn').title = 'Editar';
+    wrap.querySelector('.save-btn').style.display = 'none';
+    const cached = histAllCierres.find(c => c.id === id);
+    if (cached) cached.nota = notaVal;
+  }
+
+  // Campos editables de una expedición dentro de un cierre: factura, palets, ubicados, pendientes.
+  // Se editan y guardan dentro del propio array `expediciones` (jsonb) del cierre.
+  const EXP_FIELDS = '.ci-exp-fact, .ci-exp-pal, .ci-exp-ubic, .ci-exp-pend';
+
+  function toggleEditExp(cierreId, idx) {
+    const row      = document.getElementById(`exp-${cierreId}-${idx}`);
+    const fields   = row.querySelectorAll(EXP_FIELDS);
+    const editBtn  = row.querySelector('.edit-btn');
+    const saveBtn  = row.querySelector('.save-btn');
     const entering = fields[0].disabled;
     fields.forEach(f => {
       if (!entering) f.value = f.dataset.orig;   // cancelar: restaurar original
@@ -1383,40 +1418,34 @@
     if (entering) fields[0].focus();
   }
 
-  async function saveHistCierre(id) {
-    const card = document.getElementById('cierre-' + id);
-    const fact = card.querySelector('.ci-hc-fact');
-    const pal  = card.querySelector('.ci-hc-pal');
-    const pend = card.querySelector('.ci-hc-pend');
-    const nota = card.querySelector('.ci-nota');
+  async function saveExp(cierreId, idx) {
+    const row  = document.getElementById(`exp-${cierreId}-${idx}`);
+    const fact = row.querySelector('.ci-exp-fact');
+    const pal  = row.querySelector('.ci-exp-pal');
+    const ubic = row.querySelector('.ci-exp-ubic');
+    const pend = row.querySelector('.ci-exp-pend');
+
+    const cierre = histAllCierres.find(c => c.id === cierreId);
+    if (!cierre || !Array.isArray(cierre.expediciones) || !cierre.expediciones[idx]) return;
 
     const entero = v => Math.max(0, Math.trunc(Number(v) || 0));
-    const nFact  = entero(fact.value);
+    const nFact  = fact.value.trim() || null;
     const nPal   = entero(pal.value);
-    // Pendientes nunca puede superar el total de palets del cierre
+    const nUbic  = Math.min(entero(ubic.value), nPal);
     const nPend  = Math.min(entero(pend.value), nPal);
 
-    const payload = {
-      total_facturas:   nFact,
-      total_palets:     nPal,
-      total_pendientes: nPend,
-      nota:             nota.value === '' ? null : nota.value,
-    };
-    const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
+    const exps = [...cierre.expediciones];
+    exps[idx]  = { ...exps[idx], factura: nFact, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
+
+    const { error } = await sb.from('historial_cierres').update({ expediciones: exps }).eq('id', cierreId);
     if (error) { alert('Error al guardar: ' + error.message); return; }
 
-    fact.value = nFact; pal.value = nPal; pend.value = nPend;
-    [[fact, nFact], [pal, nPal], [pend, nPend], [nota, payload.nota || '']]
+    cierre.expediciones = exps;
+    fact.value = nFact || ''; pal.value = nPal; ubic.value = nUbic; pend.value = nPend;
+    [[fact, nFact || ''], [pal, nPal], [ubic, nUbic], [pend, nPend]]
       .forEach(([f, v]) => { f.dataset.orig = v; f.disabled = true; });
-    card.querySelector('.edit-btn').title = 'Editar';
-    card.querySelector('.save-btn').style.display = 'none';
-
-    document.getElementById('hc-fact-' + id).textContent = nFact;
-    document.getElementById('hc-pal-'  + id).textContent = nPal;
-    document.getElementById('hc-pend-' + id).textContent = nPend;
-
-    const cached = histAllCierres.find(c => c.id === id);
-    if (cached) Object.assign(cached, payload);
+    row.querySelector('.edit-btn').title = 'Editar';
+    row.querySelector('.save-btn').style.display = 'none';
   }
 
   async function deleteHistorialItem(id) {
