@@ -37,6 +37,17 @@
     --cyan: #22d3ee;
     --text: #e8eaf2;
     --muted: #5a6180;
+
+    /* Colores configurables desde Configuración (JS los reasigna vía setProperty).
+       Los valores por defecto apuntan a las variables de siempre, así que sin
+       personalizar nada el aspecto es idéntico al de antes. */
+    --estado-en_transito:    var(--warn);
+    --estado-recepcion:      var(--accent2);
+    --estado-en_preparacion: var(--accent);
+    --estado-completado:     var(--danger);
+    --col-palets:            var(--warn);
+    --col-ubicados:          var(--accent);
+    --col-pendientes:        var(--text);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -215,10 +226,30 @@
     display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .cfg-btn:hover, .cfg-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.08); }
-  .cfg-hint {
-    font-size: .68rem; color: var(--muted); line-height: 1.5;
-    padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.12);
+  /* Apartados de Configuración: cada uno es un acordeón (KPIs / Columnas / Estado) */
+  #cfgList { padding: 0; gap: 0; }
+  .cfg-section { border-bottom: 1px solid var(--border); }
+  .cfg-section:last-child { border-bottom: none; }
+  .cfg-section-head {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; color: var(--text); cursor: pointer;
+    padding: 14px 16px; font-family: 'Bebas Neue', sans-serif; font-size: .95rem; letter-spacing: 2px;
   }
+  .cfg-section-head:hover { color: var(--accent); }
+  .cfg-section-chevron { color: var(--muted); font-size: .7rem; transition: transform .2s; flex-shrink: 0; }
+  .cfg-section-chevron.open { transform: rotate(180deg); }
+  .cfg-section-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+  .cfg-section-body.open { max-height: 2400px; }
+  .cfg-section-hint { font-size: .68rem; color: var(--muted); line-height: 1.5; padding: 0 16px 12px; }
+  .cfg-section-rows { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+  .cfg-note { font-size: .68rem; color: var(--muted); font-style: italic; }
+  .cfg-link-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(0,229,160,.05); border: 1px dashed var(--border); border-radius: 12px;
+    padding: 12px 14px; flex-shrink: 0;
+  }
+  .cfg-link-label { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .cfg-link-desc { font-size: .66rem; color: var(--muted); margin-top: 3px; line-height: 1.4; max-width: 300px; }
   .cfg-row {
     background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
     padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
@@ -354,10 +385,10 @@
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
   .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-completado     { background: rgba(255,77,109,.12); color: var(--danger); }
-  .estado-en_preparacion { background: rgba(0,229,160,.12); color: var(--accent); }
-  .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-recepcion       { background: rgba(0,153,255,.12); color: var(--accent2); }
+  .estado-completado     { background: color-mix(in srgb, var(--estado-completado) 12%, transparent);     color: var(--estado-completado); }
+  .estado-en_preparacion { background: color-mix(in srgb, var(--estado-en_preparacion) 12%, transparent); color: var(--estado-en_preparacion); }
+  .estado-en_transito     { background: color-mix(in srgb, var(--estado-en_transito) 12%, transparent);   color: var(--estado-en_transito); }
+  .estado-recepcion       { background: color-mix(in srgb, var(--estado-recepcion) 12%, transparent);     color: var(--estado-recepcion); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -422,13 +453,22 @@
   .ci-dest:focus { color:var(--accent2) !important; }
   .ci-fact  { font-family:'JetBrains Mono',monospace !important; font-size:.8rem !important; }
   .ci-num   { max-width:70px; }
-  .ci-ubic  { max-width:70px; color:var(--accent) !important; font-weight:600; }
-  .ci-ubic:focus { color:var(--accent) !important; }
+  .ci-ubic  { max-width:70px; color:var(--col-ubicados) !important; font-weight:600; }
+  .ci-ubic:focus { color:var(--col-ubicados) !important; }
+  .ci-pend  { color:var(--col-pendientes) !important; font-weight:600; }
+  .ci-pend:focus { color:var(--col-pendientes) !important; }
   .ci-palets {
+    font-family:'Bebas Neue',sans-serif !important; font-size:1.4rem !important;
+    color:var(--col-palets) !important; max-width:60px; text-align:center;
+  }
+  .ci-palets:focus { color:var(--col-palets) !important; }
+  /* Campo "Palés" del panel Historial Ubicados por Día: desacoplado de .ci-palets
+     a propósito, para que recolorear la columna Total Palets no lo afecte. */
+  .ci-diapalets {
     font-family:'Bebas Neue',sans-serif !important; font-size:1.4rem !important;
     color:var(--warn) !important; max-width:60px; text-align:center;
   }
-  .ci-palets:focus { color:var(--warn) !important; }
+  .ci-diapalets:focus { color:var(--warn) !important; }
   .ci-nota { font-size:.75rem !important; color:var(--muted) !important; font-style:italic; }
   .ci-exp-fact { font-family:'JetBrains Mono',monospace !important; font-size:.68rem !important; color:var(--muted) !important; text-align:right; max-width:130px; padding:2px 5px; width:auto; }
   .ci-exp-num  { width:auto; max-width:38px; font-size:.68rem !important; padding:1px 3px; text-align:center; }
@@ -443,10 +483,10 @@
   select.ci[data-v="pendiente"]      { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="recepcion"]      { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_preparacion"] { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="completado"]     { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_transito"]     { color:var(--estado-en_transito);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="recepcion"]      { color:var(--estado-recepcion);      font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_preparacion"] { color:var(--estado-en_preparacion); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="completado"]     { color:var(--estado-completado);     font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
@@ -635,7 +675,7 @@
         <select id="fEstado">
           <option value="en_transito" selected>En tránsito</option>
           <option value="recepcion">Recepción</option>
-          <option value="en_preparacion">Reponer</option>
+          <option value="en_preparacion">Ubicar</option>
         </select>
       </div>
     </div>
@@ -716,12 +756,9 @@
     <span>Configuración</span>
     <button onclick="toggleConfig()">✕</button>
   </div>
-  <div class="cfg-hint">
-    Arrastra las tarjetas del tablero para cambiar su orden. Aquí puedes elegir el color de cada KPI y cuáles quieres ver.
-  </div>
   <div class="hist-list" id="cfgList"></div>
   <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;">
-    <button class="cfg-reset" onclick="resetKpiConfig()">Restablecer por defecto</button>
+    <button class="cfg-reset" onclick="resetAllConfig()">Restablecer por defecto</button>
   </div>
 </div>
 
@@ -758,17 +795,21 @@
   // así al reordenar las tarjetas cada una conserva el suyo.
   // Los KPI que representan un estado usan su mismo color que en la columna Estado;
   // los que no (Facturas, Total Palets) usan colores que ningún estado utiliza.
+  // mirrorsEstado: si está presente, el color de ese KPI no se elige aparte —
+  // sigue siempre al color configurado para ese estado (ver sección Estado).
   const KPI_DEFS = [
-    { key:'facturas',   label:'Facturas',            valueId:'kpiFacturas',        extraId:'kpiExtraFacturas',        sub:'Documentos registrados', color:'purple'  },
-    { key:'pendientes', label:'Pendientes Ubicar',   valueId:'kpiPendientes',      extraId:'kpiExtraPendientes',      sub:'Suma de P. por ubicar',  color:'accent'  },
-    { key:'hoy',        label:'Ubicados Hoy',        valueId:'kpiHoy',             extraId:'kpiExtraUbicados',        sub:'Palés ubicados hoy',     color:'accent'  },
-    { key:'palets',     label:'Total Palets',        valueId:'kpiPalets',          extraId:'kpiExtraPalets',          sub:'Suma de Total palets',   color:'cyan'    },
-    { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn'    },
-    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin reponer',  color:'accent2' },
+    { key:'facturas',   label:'Facturas',            valueId:'kpiFacturas',        extraId:'kpiExtraFacturas',        sub:'Documentos registrados', color:'purple',  mirrorsEstado:null },
+    { key:'pendientes', label:'Pendientes Ubicar',   valueId:'kpiPendientes',      extraId:'kpiExtraPendientes',      sub:'Suma de P. por ubicar',  color:'accent',  mirrorsEstado:'en_preparacion' },
+    { key:'hoy',        label:'Ubicados Hoy',        valueId:'kpiHoy',             extraId:'kpiExtraUbicados',        sub:'Palés ubicados hoy',     color:'accent',  mirrorsEstado:'en_preparacion' },
+    { key:'palets',     label:'Total Palets',        valueId:'kpiPalets',          extraId:'kpiExtraPalets',          sub:'Suma de Total palets',   color:'cyan',    mirrorsEstado:null },
+    { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn',    mirrorsEstado:'en_transito' },
+    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin ubicar',   color:'accent2', mirrorsEstado:'recepcion' },
   ];
   const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan'];
   const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
-  let kpiCfg = { order: [], colors: {}, hidden: [] };
+  // linked: si es true (por defecto), los KPI con mirrorsEstado siguen el color de su
+  // estado. El interruptor "Vincular con Estado" del apartado KPIs lo apaga para los 4 a la vez.
+  let kpiCfg = { order: [], colors: {}, hidden: [], linked: true };
 
   function loadKpiConfig() {
     let saved = {};
@@ -781,6 +822,7 @@
       order,
       colors: (saved.colors && typeof saved.colors === 'object') ? saved.colors : {},
       hidden: Array.isArray(saved.hidden) ? saved.hidden.filter(k => known.includes(k)) : [],
+      linked: saved.linked !== false,
     };
   }
 
@@ -789,11 +831,88 @@
   }
 
   const kpiDef      = key => KPI_DEFS.find(d => d.key === key);
-  const kpiColorOf  = key => kpiCfg.colors[key] || kpiDef(key).color;
+  // Los KPI con mirrorsEstado siguen la variable del estado (p.ej. "estado-en_transito")
+  // solo mientras kpiCfg.linked esté activo; desvinculado, se comportan como cualquier
+  // otro KPI y usan su propio color guardado (o el de KPI_DEFS si aún no se eligió ninguno).
+  const kpiColorOf  = key => {
+    const d = kpiDef(key);
+    if (d.mirrorsEstado && kpiCfg.linked) return 'estado-' + d.mirrorsEstado;
+    return kpiCfg.colors[key] || d.color;
+  };
+
+  function toggleKpiEstadoLink() {
+    const linking = !kpiCfg.linked;
+    if (!linking) {
+      // Al desvincular, cada KPI ligado conserva el color que tenía en pantalla en ese
+      // instante (el de su estado actual), para que no haya un salto de color brusco.
+      KPI_DEFS.filter(d => d.mirrorsEstado).forEach(d => {
+        if (!kpiCfg.colors[d.key]) kpiCfg.colors[d.key] = estadoCfg[d.mirrorsEstado];
+      });
+    }
+    kpiCfg.linked = linking;
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
   const kpiVisible  = key => !kpiCfg.hidden.includes(key);
   // Un KPI oculto no existe en el DOM: escribir sin comprobar rompería el render entero
   const setKpiText  = (id, val)  => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const setKpiHtml  = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  // ===== Estado: color configurable por estado =====
+  // Claves duplicadas de ESTADOS (definido más abajo en el script) porque este
+  // bloque corre antes; son solo 4 claves estables, no las etiquetas visibles.
+  const ESTADO_CFG_KEYS    = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
+  const ESTADO_CFG_DEFAULT = { en_transito:'warn', recepcion:'accent2', en_preparacion:'accent', completado:'danger' };
+  const ESTADO_CFG_KEY     = 'expediciones.estadoConfig.v1';
+  let estadoCfg = { ...ESTADO_CFG_DEFAULT };
+
+  function loadEstadoConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(ESTADO_CFG_KEY)) || {}; } catch { saved = {}; }
+    estadoCfg = { ...ESTADO_CFG_DEFAULT };
+    ESTADO_CFG_KEYS.forEach(k => { if (KPI_COLORS.includes(saved[k])) estadoCfg[k] = saved[k]; });
+  }
+  function saveEstadoConfig() { try { localStorage.setItem(ESTADO_CFG_KEY, JSON.stringify(estadoCfg)); } catch {} }
+  // Fija las custom properties --estado-*; todo lo que las usa (badges, selects,
+  // y los KPI que las espejan vía --kc) se actualiza solo, sin volver a renderizar nada.
+  function applyEstadoColors() {
+    ESTADO_CFG_KEYS.forEach(k => document.documentElement.style.setProperty('--estado-' + k, `var(--${estadoCfg[k]})`));
+  }
+  function setEstadoColor(key, color) {
+    estadoCfg[key] = color;
+    saveEstadoConfig();
+    applyEstadoColors();
+    renderCfgPanel();
+  }
+
+  // ===== Columnas: color configurable de los campos numéricos de la tabla =====
+  const COLUMN_CFG_DEFS = [
+    { key:'palets',     label:'Total Palets',  cssVar:'col-palets',     default:'warn'   },
+    { key:'ubicados',   label:'Ubicados',      cssVar:'col-ubicados',   default:'accent' },
+    { key:'pendientes', label:'P. por ubicar', cssVar:'col-pendientes', default:null     }, // null = sin color propio (var(--text))
+  ];
+  const COLUMN_CFG_KEY = 'expediciones.columnConfig.v1';
+  let columnCfg = {};
+
+  function loadColumnConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(COLUMN_CFG_KEY)) || {}; } catch { saved = {}; }
+    columnCfg = {};
+    COLUMN_CFG_DEFS.forEach(c => { columnCfg[c.key] = KPI_COLORS.includes(saved[c.key]) ? saved[c.key] : c.default; });
+  }
+  function saveColumnConfig() { try { localStorage.setItem(COLUMN_CFG_KEY, JSON.stringify(columnCfg)); } catch {} }
+  function applyColumnColors() {
+    COLUMN_CFG_DEFS.forEach(c => {
+      document.documentElement.style.setProperty('--' + c.cssVar, columnCfg[c.key] ? `var(--${columnCfg[c.key]})` : 'var(--text)');
+    });
+  }
+  function setColumnColor(key, color) {
+    columnCfg[key] = color;
+    saveColumnConfig();
+    applyColumnColors();
+    renderCfgPanel();
+  }
 
   function renderKpis() {
     const grid = document.getElementById('kpiGrid');
@@ -889,25 +1008,93 @@
     if (isOpen) renderCfgPanel();
   }
 
+  // Qué apartados del panel están desplegados (solo en memoria; no persiste entre sesiones)
+  let cfgOpenSections = { kpis: true, columnas: false, estado: false };
+
+  function toggleCfgSection(name) {
+    cfgOpenSections[name] = !cfgOpenSections[name];
+    renderCfgPanel();
+  }
+
+  function cfgColorSwatches(activo, fnName, argValue) {
+    return KPI_COLORS.map(c => `
+      <button class="cfg-sw ${c === activo ? 'active' : ''}" style="--swc:var(--${c})"
+              onclick="${fnName}('${argValue}','${c}')" title="${c}"><i></i></button>`).join('');
+  }
+
   function renderCfgPanel() {
     const list = document.getElementById('cfgList');
     if (!list) return;
-    list.innerHTML = kpiCfg.order.map(key => {
-      const d = kpiDef(key), activo = kpiColorOf(key), visible = kpiVisible(key);
+
+    const linkRow = `
+      <div class="cfg-link-row">
+        <div>
+          <div class="cfg-link-label">Vincular colores con Estado</div>
+          <div class="cfg-link-desc">Pendientes Ubicar, Ubicados Hoy, Palets en Tránsito y Palets en Recepción copian el color de su estado. Desactívalo para elegirles un color propio.</div>
+        </div>
+        <button class="cfg-toggle ${kpiCfg.linked ? 'on' : ''}" onclick="toggleKpiEstadoLink()"
+                title="${kpiCfg.linked ? 'Desvincular' : 'Vincular'}"></button>
+      </div>`;
+
+    const kpiRows = kpiCfg.order.map(key => {
+      const d = kpiDef(key), visible = kpiVisible(key);
+      const toggleBtn = `<button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleKpiVisible('${key}')"
+                    title="${visible ? 'Ocultar del tablero' : 'Mostrar en el tablero'}"></button>`;
+      if (d.mirrorsEstado && kpiCfg.linked) {
+        return `
+          <div class="cfg-row">
+            <div class="cfg-row-top">
+              <span class="cfg-name" style="--kc:var(--${kpiColorOf(key)})">${d.label}</span>
+              ${toggleBtn}
+            </div>
+            <div class="cfg-note">Color: sigue al estado "${ESTADO_TEXT[d.mirrorsEstado]}" — cámbialo en el apartado Estado</div>
+          </div>`;
+      }
+      const activo = kpiColorOf(key);
       return `
         <div class="cfg-row" style="--kc:var(--${activo})">
           <div class="cfg-row-top">
             <span class="cfg-name">${d.label}</span>
-            <button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleKpiVisible('${key}')"
-                    title="${visible ? 'Ocultar del tablero' : 'Mostrar en el tablero'}"></button>
+            ${toggleBtn}
           </div>
-          <div class="cfg-swatches">
-            ${KPI_COLORS.map(c => `
-              <button class="cfg-sw ${c === activo ? 'active' : ''}" style="--swc:var(--${c})"
-                      onclick="setKpiColor('${key}','${c}')" title="${c}"><i></i></button>`).join('')}
-          </div>
+          <div class="cfg-swatches">${cfgColorSwatches(activo, 'setKpiColor', key)}</div>
         </div>`;
     }).join('');
+
+    const colRows = COLUMN_CFG_DEFS.map(c => {
+      const activo = columnCfg[c.key];
+      return `
+        <div class="cfg-row" style="--kc:${activo ? `var(--${activo})` : 'var(--text)'}">
+          <div class="cfg-row-top"><span class="cfg-name">${c.label}</span></div>
+          <div class="cfg-swatches">${cfgColorSwatches(activo, 'setColumnColor', c.key)}</div>
+        </div>`;
+    }).join('');
+
+    const estRows = ESTADO_CFG_KEYS.map(key => {
+      const activo = estadoCfg[key];
+      return `
+        <div class="cfg-row" style="--kc:var(--${activo})">
+          <div class="cfg-row-top"><span class="cfg-name">${ESTADO_TEXT[key]}</span></div>
+          <div class="cfg-swatches">${cfgColorSwatches(activo, 'setEstadoColor', key)}</div>
+        </div>`;
+    }).join('');
+
+    const section = (name, title, hint, bodyHtml) => `
+      <div class="cfg-section">
+        <button class="cfg-section-head" onclick="toggleCfgSection('${name}')">
+          <span>${title}</span>
+          <span class="cfg-section-chevron ${cfgOpenSections[name] ? 'open' : ''}">▾</span>
+        </button>
+        <div class="cfg-section-body ${cfgOpenSections[name] ? 'open' : ''}">
+          <div class="cfg-section-hint">${hint}</div>
+          <div class="cfg-section-rows">${bodyHtml}</div>
+        </div>
+      </div>`;
+
+    list.innerHTML =
+      section('kpis', 'KPIs', 'Arrastra las tarjetas del tablero para reordenarlas. Elige aquí su color y cuáles se ven.', linkRow + kpiRows) +
+      section('columnas', 'Columnas', 'Color de los números de Total Palets, Ubicados y P. por ubicar en la tabla.', colRows) +
+      section('estado', 'Estado', 'Color de cada estado en la columna Estado. Los KPIs que representan un estado siguen este color automáticamente.', estRows);
   }
 
   function setKpiColor(key, color) {
@@ -925,15 +1112,27 @@
     renderCfgPanel();
   }
 
-  function resetKpiConfig() {
-    if (!confirm('¿Restablecer el orden, los colores y la visibilidad de los KPIs?')) return;
-    try { localStorage.removeItem(KPI_CFG_KEY); } catch {}
+  function resetAllConfig() {
+    if (!confirm('¿Restablecer el orden, los colores y la visibilidad de KPIs, columnas y estado?')) return;
+    try {
+      localStorage.removeItem(KPI_CFG_KEY);
+      localStorage.removeItem(ESTADO_CFG_KEY);
+      localStorage.removeItem(COLUMN_CFG_KEY);
+    } catch {}
     loadKpiConfig();
+    loadEstadoConfig();
+    loadColumnConfig();
     renderKpis();
+    applyEstadoColors();
+    applyColumnColors();
     renderCfgPanel();
   }
 
   loadKpiConfig();
+  loadEstadoConfig();
+  loadColumnConfig();
+  applyEstadoColors();
+  applyColumnColors();
   renderKpis();
 
   // ===== AUTH =====
@@ -1002,20 +1201,22 @@
   }
 
   // ===== ESTADOS =====
-  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Factura finalizada)
+  // Flujo: en_transito → recepcion → en_preparacion (Ubicar) → completado (Factura finalizada)
   const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
   const ESTADO_TEXT = {
     en_transito:    'En tránsito',
     recepcion:      'Recepción',
-    en_preparacion: 'Reponer',
+    en_preparacion: 'Ubicar',
     completado:     'Factura finalizada',
   };
   const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
+  // Apunta a las custom properties configurables (ver :root); su valor real
+  // lo fija applyEstadoColors() al cargar y cada vez que se cambia en Configuración.
   const ESTADO_COLOR = {
-    en_transito:    'var(--warn)',
-    recepcion:      'var(--accent2)',
-    en_preparacion: 'var(--accent)',
-    completado:     'var(--danger)',
+    en_transito:    'var(--estado-en_transito)',
+    recepcion:      'var(--estado-recepcion)',
+    en_preparacion: 'var(--estado-en_preparacion)',
+    completado:     'var(--estado-completado)',
   };
 
   // Normaliza los valores antiguos que puedan quedar en el histórico
@@ -1063,17 +1264,17 @@
     setKpiHtml('kpiExtraFacturas',
       `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
       `<span><span>📦 Recepción</span><b>${nEnRecep}</b></span>` +
-      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`);
+      `<span><span>🔧 Ubicar</span><b>${nEnPrep}</b></span>`);
 
     setKpiHtml('kpiExtraPendientes',
-      `<span><span>% sobre palets en reponer</span><b>${pctPend}%</b></span>` +
+      `<span><span>% sobre palets en ubicar</span><b>${pctPend}%</b></span>` +
       `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`);
 
     renderKpiExtraUbicados();
 
     setKpiHtml('kpiExtraPalets',
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
-      `<span><span>En reponer</span><b>${paletsEnPrep}</b></span>`);
+      `<span><span>En ubicar</span><b>${paletsEnPrep}</b></span>`);
 
     setKpiHtml('kpiExtraPaletsTransito',
       `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`);
@@ -1110,7 +1311,7 @@
         <td><input type="number" class="ci ci-num ci-ubic" value="${ubic}" min="0" max="${total}"
           ${repo?'':'disabled'}
           onblur="editarReposicion(${i},'ubicados',this.value)"></td>
-        <td><input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
+        <td><input type="number" class="ci ci-num ci-pend" value="${pUb}" min="0" max="${total}"
           ${repo?'':'disabled'}
           onblur="editarReposicion(${i},'p_ubicar',this.value)"></td>
         <td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
@@ -1162,7 +1363,7 @@
               ${repo?'':'disabled'}
               onblur="editarReposicion(${i},'ubicados',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>P. por ubicar</label>
-            <input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
+            <input type="number" class="ci ci-num ci-pend" value="${pUb}" min="0" max="${total}"
               ${repo?'':'disabled'}
               onblur="editarReposicion(${i},'p_ubicar',this.value)" style="max-width:80px;"></div>
           <div class="m-field"><label>Calle</label>
@@ -1730,7 +1931,7 @@
             <div style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px;">
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0;">Palés</span>
-                <input class="ci ci-palets" type="number" min="0" value="${r.palets_ubicados}" data-orig="${r.palets_ubicados}" disabled style="width:72px;">
+                <input class="ci ci-diapalets" type="number" min="0" value="${r.palets_ubicados}" data-orig="${r.palets_ubicados}" disabled style="width:72px;">
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(r.nota)}" data-orig="${esc(r.nota)}" style="flex:1;" disabled>
@@ -1752,7 +1953,7 @@
 
   function toggleEditHistUbic(id) {
     const card   = document.getElementById('histUbic-' + id);
-    const palets = card.querySelector('.ci-palets');
+    const palets = card.querySelector('.ci-diapalets');
     const nota   = card.querySelector('.ci-nota');
     const editBtn = card.querySelector('.edit-btn');
     const saveBtn = card.querySelector('.save-btn');
@@ -1775,7 +1976,7 @@
 
   async function saveHistUbic(id, fecha) {
     const card   = document.getElementById('histUbic-' + id);
-    const palets = card.querySelector('.ci-palets');
+    const palets = card.querySelector('.ci-diapalets');
     const nota   = card.querySelector('.ci-nota');
     const paletsVal = Number(palets.value) || 0;
     const notaVal   = nota.value === '' ? null : nota.value;
