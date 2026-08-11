@@ -635,7 +635,7 @@
         <select id="fEstado">
           <option value="en_transito" selected>En tránsito</option>
           <option value="recepcion">Recepción</option>
-          <option value="en_preparacion">Reponer</option>
+          <option value="en_preparacion">Ubicar</option>
         </select>
       </div>
     </div>
@@ -764,7 +764,7 @@
     { key:'hoy',        label:'Ubicados Hoy',        valueId:'kpiHoy',             extraId:'kpiExtraUbicados',        sub:'Palés ubicados hoy',     color:'accent'  },
     { key:'palets',     label:'Total Palets',        valueId:'kpiPalets',          extraId:'kpiExtraPalets',          sub:'Suma de Total palets',   color:'cyan'    },
     { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn'    },
-    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin reponer',  color:'accent2' },
+    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin ubicar',   color:'accent2' },
   ];
   const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan'];
   const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
@@ -1002,12 +1002,12 @@
   }
 
   // ===== ESTADOS =====
-  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Factura finalizada)
+  // Flujo: en_transito → recepcion → en_preparacion (Ubicar) → completado (Factura finalizada)
   const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
   const ESTADO_TEXT = {
     en_transito:    'En tránsito',
     recepcion:      'Recepción',
-    en_preparacion: 'Reponer',
+    en_preparacion: 'Ubicar',
     completado:     'Factura finalizada',
   };
   const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
@@ -1063,17 +1063,17 @@
     setKpiHtml('kpiExtraFacturas',
       `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
       `<span><span>📦 Recepción</span><b>${nEnRecep}</b></span>` +
-      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`);
+      `<span><span>🔧 Ubicar</span><b>${nEnPrep}</b></span>`);
 
     setKpiHtml('kpiExtraPendientes',
-      `<span><span>% sobre palets en reponer</span><b>${pctPend}%</b></span>` +
+      `<span><span>% sobre palets en ubicar</span><b>${pctPend}%</b></span>` +
       `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`);
 
     renderKpiExtraUbicados();
 
     setKpiHtml('kpiExtraPalets',
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
-      `<span><span>En reponer</span><b>${paletsEnPrep}</b></span>`);
+      `<span><span>En ubicar</span><b>${paletsEnPrep}</b></span>`);
 
     setKpiHtml('kpiExtraPaletsTransito',
       `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`);

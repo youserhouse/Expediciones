@@ -19,6 +19,7 @@
 
 ### Registro de aprendizajes
 
+- **2026-08-11 — Relabel de "Reponer" a "Ubicar": buscar por `ESTADO_TEXT`, no por el nombre del estado:** El valor `en_preparacion` en `ESTADO_TEXT` fue el cambio principal, pero el texto "Reponer"/"reponer" también aparecía suelto en 4 sitios más que no derivan de esa constante: el `<option>` hardcodeado del modal "Nueva entrada", el emoji del desglose del KPI Facturas, y dos subtítulos de KPI extra ("% sobre palets en reponer", "En reponer", "Recibidos sin reponer"). **Por qué importa:** al renombrar una etiqueta de estado, un `grep -i "reponer"` sobre el HTML+JS antes de dar por terminado evita dejar texto viejo en sitios que no pasan por la función central de traducción; los nombres internos (`esReponer`, `enPrep`) no hace falta tocarlos si el usuario solo pidió cambiar lo visible.
 - **2026-08-11 — Un color asignado por posición CSS es incompatible con reordenar elementos:** Los 6 KPI tomaban su color de `.kpi-card:nth-child(N){--kc:...}`, así que al añadir arrastrar-para-reordenar los colores se habrían barajado (la tarjeta movida adoptaba el color de su nueva posición). Hubo que mover el color a un dato por KPI (`KPI_DEFS[].color` → `style="--kc:..."` en cada tarjeta) y dejar en `nth-child` solo el `animation-delay`. **Por qué importa:** antes de hacer reordenable cualquier lista, revisar si algún estilo depende de `nth-child`/`:first-child`/`:last-child`; ese estilo debe pasar a ser un atributo del elemento, no de su posición.
 - **2026-08-11 — Al permitir ocultar elementos, todo `getElementById(...).textContent = x` se vuelve una bomba:** Con los KPI ocultables, sus nodos dejan de existir y los ~11 accesos directos que había en `updateKPIs`, `renderKpiExtraUbicados`, `registrarUbicadosHoy`, `saveHistUbic` y `deleteHistUbic` lanzarían `TypeError` tumbando el render entero. Se centralizó en `setKpiText()`/`setKpiHtml()`, que comprueban existencia. **Por qué importa:** cualquier función de visibilidad opcional obliga a auditar TODOS los accesos al DOM de esos elementos, no solo el sitio obvio donde se pintan.
 - **2026-08-11 — Cambiar el significado de un KPI obliga a revisar sus estadísticas derivadas:** Al pasar `Total Palets` de "solo Reponer" a "todos los estados", dos números del desplegable quedaban incoherentes sin tocarlos: el `%` de pendientes se diluía al dividir por el total global, y "Media por factura" dividía palets de todos los estados entre solo las facturas en Reponer. **Por qué importa:** un cambio de fórmula en un KPI rara vez es una línea; hay que rastrear qué otros cálculos reutilizan esa variable (aquí `totalPalets` alimentaba `pctPend` y `avg`) y decidir explícitamente si siguen el cambio o conservan el ámbito antiguo.
@@ -169,16 +170,16 @@ The key is a publishable (anon) key; Row Level Security enforces that only authe
 
 `en_transito` → `recepcion` → `en_preparacion` → `completado`
 
-UI labels differ from the DB values: `en_preparacion` displays as **"Reponer"** and `completado` as **"Factura finalizada"**. `normEstado()` maps legacy values (`pendiente`/`ok`/`tarde`) onto the current set, so old `historial_cierres` snapshots still render. Each estado also has a fixed semantic color (`ESTADO_COLOR` in the script, mirrored in the `select.ci[data-v]` and `.estado-*` CSS rules): `en_transito` amber/`--warn`, `recepcion` blue/`--accent2`, `en_preparacion` green/`--accent`, `completado` red/`--danger`.
+UI labels differ from the DB values: `en_preparacion` displays as **"Ubicar"** (relabeled from "Reponer" — DB value and all logic unchanged) and `completado` as **"Factura finalizada"**. `normEstado()` maps legacy values (`pendiente`/`ok`/`tarde`) onto the current set, so old `historial_cierres` snapshots still render. Each estado also has a fixed semantic color (`ESTADO_COLOR` in the script, mirrored in the `select.ci[data-v]` and `.estado-*` CSS rules): `en_transito` amber/`--warn`, `recepcion` blue/`--accent2`, `en_preparacion` green/`--accent`, `completado` red/`--danger`.
 
 | Estado | Total Palets | Ubicados / P. por ubicar |
 |--------|--------------|--------------------------|
 | En tránsito | locked (pencil unlocks) | locked |
 | Recepción | locked (pencil unlocks) | locked |
-| Reponer | locked (pencil unlocks) | **editable** |
+| Ubicar | locked (pencil unlocks) | **editable** |
 | Factura finalizada | — archives the invoice immediately | — |
 
-Reaching `p_ubicar = 0` in Reponer auto-archives the invoice: it moves to `historial_cierres` and disappears from the board.
+Reaching `p_ubicar = 0` in Ubicar auto-archives the invoice: it moves to `historial_cierres` and disappears from the board.
 
 **`historial_cierres`** — snapshots created when the board is "cleared" (or auto-archived at zero):
 - `id` uuid, `cerrado_at` timestamptz, `total_facturas`, `total_palets`, `total_pendientes` int, `expediciones` jsonb (full snapshot), `nota` text (free-text annotation on the whole cierre)
