@@ -1333,9 +1333,9 @@
             <div>
               <div class="cierre-date">${fecha} · ${hora}</div>
               <div class="cierre-stats">
-                <div class="cierre-stat"><b>${c.total_facturas}</b> facturas</div>
-                <div class="cierre-stat"><b>${c.total_palets}</b> palets</div>
-                <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
+                <div class="cierre-stat"><b id="hc-fact-${c.id}">${c.total_facturas}</b> facturas</div>
+                <div class="cierre-stat"><b id="hc-pal-${c.id}">${c.total_palets}</b> palets</div>
+                <div class="cierre-stat" style="color:var(--warn)"><b id="hc-pend-${c.id}">${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
             <span class="cierre-chevron">▼</span>
@@ -1402,12 +1402,28 @@
       exps[idx] = { ...exps[idx], factura: fact.value.trim() || null, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
     });
 
-    const payload = { nota: notaVal, expediciones: exps };
+    // La cabecera (N facturas · N palets · N pendientes) es un resumen de `expediciones`;
+    // se recalcula desde los datos recién editados para que nunca quede desactualizada.
+    const nTotalFacturas   = exps.length;
+    const nTotalPalets     = exps.reduce((s, e) => s + (Number(e.palets)   || 0), 0);
+    const nTotalPendientes = exps.reduce((s, e) => s + (Number(e.p_ubicar) || 0), 0);
+
+    const payload = {
+      nota: notaVal, expediciones: exps,
+      total_facturas: nTotalFacturas, total_palets: nTotalPalets, total_pendientes: nTotalPendientes,
+    };
     const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
 
     cierre.nota = notaVal;
     cierre.expediciones = exps;
+    cierre.total_facturas   = nTotalFacturas;
+    cierre.total_palets     = nTotalPalets;
+    cierre.total_pendientes = nTotalPendientes;
+
+    document.getElementById('hc-fact-' + id).textContent = nTotalFacturas;
+    document.getElementById('hc-pal-'  + id).textContent = nTotalPalets;
+    document.getElementById('hc-pend-' + id).textContent = nTotalPendientes;
 
     nota.value = notaVal || ''; nota.dataset.orig = notaVal || '';
     rows.forEach((row, idx) => {
