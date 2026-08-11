@@ -1618,6 +1618,7 @@
     // renderTableHead() corre al arrancar, cuando #appContent aún está oculto y el
     // contenedor mide 0: hay que recalcular el reparto ya con la tabla visible.
     syncTableWidth();
+    restaurarEdiciones(rowEdits, 'exp-row-', ROW_EDIT_FIELDS);
   }
 
   function statusLabel(s) { const e = normEstado(s); return `${ESTADO_ICON[e]} ${ESTADO_TEXT[e]}`; }
@@ -1689,6 +1690,7 @@
         </div>
       </div>`;
     }).join('');
+    restaurarEdiciones(mrowEdits, 'exp-mrow-', MROW_EDIT_FIELDS);
   }
 
   function upd(i, key, val) {
@@ -1717,6 +1719,10 @@
     const { error } = await sb.from('expediciones').update(payload).eq('id', data[i].id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
     Object.assign(data[i], payload);
+    // Guardado con éxito: la edición terminó, la fila vuelve a salir bloqueada.
+    // Si falla, no se limpia y la fila sigue desbloqueada para reintentar.
+    rowEdits.delete(data[i].id);
+    mrowEdits.delete(data[i].id);
     render();
   }
 
@@ -1735,30 +1741,74 @@
   // La tarjeta móvil nunca ha editado dest/factura por su lápiz (están fuera del m-grid)
   const MROW_EDIT_FIELDS = ROW_EDIT_FIELDS.filter(d => d.key !== 'dest' && d.key !== 'factura');
 
-  function toggleEditRowGeneric(row, defs, i) {
+  // Filas actualmente desbloqueadas con el lápiz, con sus valores ORIGINALES (los de
+  // antes de empezar a editar). Se guardan aquí y no solo en el data-orig del <input>
+  // porque reordenar/ocultar una columna reconstruye <tbody> y destruye esos inputs:
+  // sin esto la fila se volvía a bloquear sola y el data-orig pasaba a valer el texto
+  // sin guardar, dejando el valor real irrecuperable y la pantalla mostrando un cambio
+  // que la base de datos no tiene. Van indexadas por id de expedición (no por índice)
+  // para que borrar otra fila no las desplace.
+  const rowEdits  = new Map();   // escritorio
+  const mrowEdits = new Map();   // móvil
+
+  function aplicarEstadoEdicion(row, defs, origs) {
+    defs.forEach(d => {
+      const el = row.querySelector('.' + d.cls);
+      if (!el) return;
+      el.disabled = false;
+      if (d.key in origs) el.dataset.orig = origs[d.key];
+    });
+    const editBtn = row.querySelector('.edit-btn');
+    const saveBtn = row.querySelector('.save-btn');
+    if (editBtn) editBtn.title = 'Cancelar edición';
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  // Se llama al final de renderDesktop()/renderMobile() para que las filas que
+  // estaban en edición sigan desbloqueadas tras reconstruir la tabla.
+  function restaurarEdiciones(store, prefix, defs) {
+    store.forEach((origs, id) => {
+      const i = data.findIndex(r => r.id === id);
+      if (i < 0) { store.delete(id); return; }      // la fila ya no existe (se borró)
+      const row = document.getElementById(prefix + i);
+      if (row) aplicarEstadoEdicion(row, defs, origs);
+    });
+  }
+
+  function toggleEditRowGeneric(row, defs, i, store) {
     const present = defs.map(d => ({ ...d, el: row.querySelector('.' + d.cls) })).filter(d => d.el);
     if (!present.length) return;
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
+    const id = data[i].id;
     const entering = present[0].el.disabled;
     if (entering) {
-      present.forEach(d => d.el.disabled = false);
+      const origs = {};
+      present.forEach(d => { origs[d.key] = d.el.dataset.orig; d.el.disabled = false; });
+      store.set(id, origs);
       editBtn.title = 'Cancelar edición';
       saveBtn.style.display = 'inline-flex';
       present[0].el.focus();
     } else {
+      // Cancelar: se restaura desde los originales guardados al entrar en edición,
+      // que sobreviven aunque la fila se haya reconstruido por el medio.
+      const origs = store.get(id) || {};
       present.forEach(d => {
-        d.el.value = d.el.dataset.orig;
+        const orig = (d.key in origs) ? origs[d.key] : d.el.dataset.orig;
+        d.el.value = orig;
+        d.el.dataset.orig = orig;
         d.el.disabled = true;
-        data[i][d.key] = d.key === 'palets' ? (Number(d.el.value) || 0) : d.el.value;
+        data[i][d.key] = d.key === 'palets' ? (Number(orig) || 0) : orig;
       });
+      store.delete(id);
       editBtn.title = 'Editar';
       saveBtn.style.display = 'none';
+      if ('palets' in origs) updBar(i, data[i].palets);
     }
   }
 
-  function toggleEditRow(i)  { toggleEditRowGeneric(document.getElementById('exp-row-' + i),  ROW_EDIT_FIELDS,  i); }
-  function toggleEditMRow(i) { toggleEditRowGeneric(document.getElementById('exp-mrow-' + i), MROW_EDIT_FIELDS, i); }
+  function toggleEditRow(i)  { toggleEditRowGeneric(document.getElementById('exp-row-' + i),  ROW_EDIT_FIELDS,  i, rowEdits); }
+  function toggleEditMRow(i) { toggleEditRowGeneric(document.getElementById('exp-mrow-' + i), MROW_EDIT_FIELDS, i, mrowEdits); }
 
   function collectRowVals(row, defs) {
     const vals = {};
