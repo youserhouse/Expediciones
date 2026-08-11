@@ -243,6 +243,13 @@
   .cfg-section-hint { font-size: .68rem; color: var(--muted); line-height: 1.5; padding: 0 16px 12px; }
   .cfg-section-rows { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
   .cfg-note { font-size: .68rem; color: var(--muted); font-style: italic; }
+  .cfg-link-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(0,229,160,.05); border: 1px dashed var(--border); border-radius: 12px;
+    padding: 12px 14px; flex-shrink: 0;
+  }
+  .cfg-link-label { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .cfg-link-desc { font-size: .66rem; color: var(--muted); margin-top: 3px; line-height: 1.4; max-width: 300px; }
   .cfg-row {
     background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
     padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
@@ -800,7 +807,9 @@
   ];
   const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan'];
   const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
-  let kpiCfg = { order: [], colors: {}, hidden: [] };
+  // linked: si es true (por defecto), los KPI con mirrorsEstado siguen el color de su
+  // estado. El interruptor "Vincular con Estado" del apartado KPIs lo apaga para los 4 a la vez.
+  let kpiCfg = { order: [], colors: {}, hidden: [], linked: true };
 
   function loadKpiConfig() {
     let saved = {};
@@ -813,6 +822,7 @@
       order,
       colors: (saved.colors && typeof saved.colors === 'object') ? saved.colors : {},
       hidden: Array.isArray(saved.hidden) ? saved.hidden.filter(k => known.includes(k)) : [],
+      linked: saved.linked !== false,
     };
   }
 
@@ -821,9 +831,29 @@
   }
 
   const kpiDef      = key => KPI_DEFS.find(d => d.key === key);
-  // Los KPI con mirrorsEstado no tienen color propio: devuelve la variable del estado
-  // (p.ej. "estado-en_transito"), que ya resuelve al color configurado en esa sección.
-  const kpiColorOf  = key => { const d = kpiDef(key); return d.mirrorsEstado ? 'estado-' + d.mirrorsEstado : (kpiCfg.colors[key] || d.color); };
+  // Los KPI con mirrorsEstado siguen la variable del estado (p.ej. "estado-en_transito")
+  // solo mientras kpiCfg.linked esté activo; desvinculado, se comportan como cualquier
+  // otro KPI y usan su propio color guardado (o el de KPI_DEFS si aún no se eligió ninguno).
+  const kpiColorOf  = key => {
+    const d = kpiDef(key);
+    if (d.mirrorsEstado && kpiCfg.linked) return 'estado-' + d.mirrorsEstado;
+    return kpiCfg.colors[key] || d.color;
+  };
+
+  function toggleKpiEstadoLink() {
+    const linking = !kpiCfg.linked;
+    if (!linking) {
+      // Al desvincular, cada KPI ligado conserva el color que tenía en pantalla en ese
+      // instante (el de su estado actual), para que no haya un salto de color brusco.
+      KPI_DEFS.filter(d => d.mirrorsEstado).forEach(d => {
+        if (!kpiCfg.colors[d.key]) kpiCfg.colors[d.key] = estadoCfg[d.mirrorsEstado];
+      });
+    }
+    kpiCfg.linked = linking;
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
   const kpiVisible  = key => !kpiCfg.hidden.includes(key);
   // Un KPI oculto no existe en el DOM: escribir sin comprobar rompería el render entero
   const setKpiText  = (id, val)  => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -996,11 +1026,21 @@
     const list = document.getElementById('cfgList');
     if (!list) return;
 
+    const linkRow = `
+      <div class="cfg-link-row">
+        <div>
+          <div class="cfg-link-label">Vincular colores con Estado</div>
+          <div class="cfg-link-desc">Pendientes Ubicar, Ubicados Hoy, Palets en Tránsito y Palets en Recepción copian el color de su estado. Desactívalo para elegirles un color propio.</div>
+        </div>
+        <button class="cfg-toggle ${kpiCfg.linked ? 'on' : ''}" onclick="toggleKpiEstadoLink()"
+                title="${kpiCfg.linked ? 'Desvincular' : 'Vincular'}"></button>
+      </div>`;
+
     const kpiRows = kpiCfg.order.map(key => {
       const d = kpiDef(key), visible = kpiVisible(key);
       const toggleBtn = `<button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleKpiVisible('${key}')"
                     title="${visible ? 'Ocultar del tablero' : 'Mostrar en el tablero'}"></button>`;
-      if (d.mirrorsEstado) {
+      if (d.mirrorsEstado && kpiCfg.linked) {
         return `
           <div class="cfg-row">
             <div class="cfg-row-top">
@@ -1052,7 +1092,7 @@
       </div>`;
 
     list.innerHTML =
-      section('kpis', 'KPIs', 'Arrastra las tarjetas del tablero para reordenarlas. Elige aquí su color y cuáles se ven.', kpiRows) +
+      section('kpis', 'KPIs', 'Arrastra las tarjetas del tablero para reordenarlas. Elige aquí su color y cuáles se ven.', linkRow + kpiRows) +
       section('columnas', 'Columnas', 'Color de los números de Total Palets, Ubicados y P. por ubicar en la tabla.', colRows) +
       section('estado', 'Estado', 'Color de cada estado en la columna Estado. Los KPIs que representan un estado siguen este color automáticamente.', estRows);
   }
