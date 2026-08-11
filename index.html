@@ -167,17 +167,19 @@
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
     background: var(--kc, var(--accent)); opacity:.8;
   }
-  .kpi-card:nth-child(1){--kc:var(--danger);  animation-delay:.05s}
-  .kpi-card:nth-child(2){--kc:var(--warn);    animation-delay:.10s}
-  .kpi-card:nth-child(3){--kc:var(--purple);  animation-delay:.15s}
-  .kpi-card:nth-child(4){--kc:var(--accent2); animation-delay:.20s}
-  .kpi-card:nth-child(5){--kc:var(--accent);  animation-delay:.25s}
-  .kpi-card:nth-child(6){--kc:var(--cyan);    animation-delay:.30s}
+  /* El color (--kc) lo asigna renderKpis() por KPI, no por posición: al reordenar
+     las tarjetas cada KPI conserva su color. Aquí solo queda la animación de entrada. */
+  .kpi-card:nth-child(1){animation-delay:.05s}
+  .kpi-card:nth-child(2){animation-delay:.10s}
+  .kpi-card:nth-child(3){animation-delay:.15s}
+  .kpi-card:nth-child(4){animation-delay:.20s}
+  .kpi-card:nth-child(5){animation-delay:.25s}
+  .kpi-card:nth-child(6){animation-delay:.30s}
   .kpi-label { font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
   .kpi-value { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,4vw,2.8rem); line-height:1; color:var(--kc,var(--accent)); }
   .kpi-sub   { font-size:.68rem; color:var(--muted); margin-top:5px; }
   .kpi-card {
-    cursor: default;
+    cursor: grab;
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   }
   .kpi-card:hover {
@@ -195,6 +197,62 @@
   .kpi-card:hover .kpi-extra { max-height: 120px; opacity: 1; padding-top: 7px; }
   .kpi-extra span { display: flex; justify-content: space-between; }
   .kpi-extra b    { color: var(--kc, var(--accent)); font-weight: 600; }
+
+  /* ===== KPI: arrastrar para reordenar ===== */
+  .kpi-grid.dragging-active { touch-action: none; user-select: none; -webkit-user-select: none; }
+  .kpi-card.kpi-dragging {
+    opacity: .85; transform: scale(1.04); z-index: 20;
+    box-shadow: 0 14px 40px -10px color-mix(in srgb, var(--kc, var(--accent)) 60%, transparent);
+    border-color: var(--kc, var(--accent));
+    cursor: grabbing; animation: none;
+  }
+  .kpi-card.kpi-dragging .kpi-extra { max-height: 0; opacity: 0; padding-top: 0; }
+
+  /* ===== CONFIGURACIÓN ===== */
+  .cfg-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .cfg-btn:hover, .cfg-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.08); }
+  .cfg-hint {
+    font-size: .68rem; color: var(--muted); line-height: 1.5;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.12);
+  }
+  .cfg-row {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+  }
+  .cfg-row-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cfg-name { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .cfg-name::before {
+    content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--kc, var(--accent)); margin-right: 8px; vertical-align: middle;
+  }
+  .cfg-swatches { display: flex; gap: 7px; flex-wrap: wrap; }
+  .cfg-sw {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+    border: 2px solid transparent; transition: all .15s; padding: 0; background: none;
+  }
+  .cfg-sw i { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--swc); }
+  .cfg-sw:hover { transform: scale(1.15); }
+  .cfg-sw.active { border-color: var(--text); transform: scale(1.1); }
+  .cfg-toggle {
+    position: relative; width: 38px; height: 21px; border-radius: 999px; flex-shrink: 0;
+    background: var(--border); border: none; cursor: pointer; transition: background .2s; padding: 0;
+  }
+  .cfg-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 15px; height: 15px;
+    border-radius: 50%; background: var(--muted); transition: all .2s;
+  }
+  .cfg-toggle.on { background: rgba(0,229,160,.25); }
+  .cfg-toggle.on::after { left: 20px; background: var(--accent); }
+  .cfg-reset {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 9px 14px; border-radius: 8px; cursor: pointer; transition: all .15s;
+    font-family: 'DM Sans', sans-serif; font-size: .74rem; letter-spacing: .5px; width: 100%;
+  }
+  .cfg-reset:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,77,109,.06); }
 
   /* ===== HISTORIAL ===== */
   .hist-btn {
@@ -505,49 +563,14 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         <span id="userEmail">—</span>
       </div>
+      <button class="cfg-btn" id="cfgBtn" onclick="toggleConfig()" title="Configuración"></button>
       <button class="logout-btn" onclick="doLogout()">Salir</button>
     </div>
   </header>
 
   <!-- KPIs -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Facturas</div>
-      <div class="kpi-value" id="kpiFacturas">0</div>
-      <div class="kpi-sub">Documentos registrados</div>
-      <div class="kpi-extra" id="kpiExtraFacturas"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Pendientes Ubicar</div>
-      <div class="kpi-value" id="kpiPendientes">0</div>
-      <div class="kpi-sub">Suma de P. por ubicar</div>
-      <div class="kpi-extra" id="kpiExtraPendientes"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Ubicados Hoy</div>
-      <div class="kpi-value" id="kpiHoy">0</div>
-      <div class="kpi-sub" id="kpiHoySub">Total Palets − Pendientes</div>
-      <div class="kpi-extra" id="kpiExtraUbicados"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Palets</div>
-      <div class="kpi-value" id="kpiPalets">0</div>
-      <div class="kpi-sub">Palets en reponer</div>
-      <div class="kpi-extra" id="kpiExtraPalets"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Palets en Tránsito</div>
-      <div class="kpi-value" id="kpiPaletsTransito">0</div>
-      <div class="kpi-sub">Unidades en tránsito</div>
-      <div class="kpi-extra" id="kpiExtraPaletsTransito"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Palets en Recepción</div>
-      <div class="kpi-value" id="kpiPaletsRecepcion">0</div>
-      <div class="kpi-sub">Recibidos sin reponer</div>
-      <div class="kpi-extra" id="kpiExtraPaletsRecepcion"></div>
-    </div>
-  </div>
+  <!-- Las tarjetas las genera renderKpis() según el orden/color/visibilidad guardados -->
+  <div class="kpi-grid" id="kpiGrid"></div>
 
   <!-- TABLE -->
   <div class="table-section">
@@ -686,6 +709,22 @@
   <div class="hist-pager" id="histUbicPager"></div>
 </div>
 
+<!-- PANEL DE CONFIGURACIÓN -->
+<div class="hist-overlay" id="cfgOverlay" onclick="toggleConfig()"></div>
+<div class="historial-panel" id="cfgPanel">
+  <div class="hist-header">
+    <span>Configuración</span>
+    <button onclick="toggleConfig()">✕</button>
+  </div>
+  <div class="cfg-hint">
+    Arrastra las tarjetas del tablero para cambiar su orden. Aquí puedes elegir el color de cada KPI y cuáles quieres ver.
+  </div>
+  <div class="hist-list" id="cfgList"></div>
+  <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;">
+    <button class="cfg-reset" onclick="resetKpiConfig()">Restablecer por defecto</button>
+  </div>
+</div>
+
 <script>
   // ============================================================
   const SUPABASE_URL = 'https://ojjcyizjcofbdynrwpql.supabase.co';
@@ -712,6 +751,190 @@
   let histUbicPage = 1;
   document.getElementById('histGearBtn').innerHTML    = ICON_GEAR;
   document.getElementById('histUbicGearBtn').innerHTML = ICON_GEAR;
+  document.getElementById('cfgBtn').innerHTML          = ICON_GEAR;
+
+  // ===== KPIs: definición, orden, color y visibilidad =====
+  // Fuente única de verdad. El color va POR KPI (no por posición en la rejilla),
+  // así al reordenar las tarjetas cada una conserva el suyo.
+  // Los KPI que representan un estado usan su mismo color que en la columna Estado;
+  // los que no (Facturas, Total Palets) usan colores que ningún estado utiliza.
+  const KPI_DEFS = [
+    { key:'facturas',   label:'Facturas',            valueId:'kpiFacturas',        extraId:'kpiExtraFacturas',        sub:'Documentos registrados', color:'purple'  },
+    { key:'pendientes', label:'Pendientes Ubicar',   valueId:'kpiPendientes',      extraId:'kpiExtraPendientes',      sub:'Suma de P. por ubicar',  color:'accent'  },
+    { key:'hoy',        label:'Ubicados Hoy',        valueId:'kpiHoy',             extraId:'kpiExtraUbicados',        sub:'Palés ubicados hoy',     color:'accent'  },
+    { key:'palets',     label:'Total Palets',        valueId:'kpiPalets',          extraId:'kpiExtraPalets',          sub:'Suma de Total palets',   color:'cyan'    },
+    { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn'    },
+    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin reponer',  color:'accent2' },
+  ];
+  const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan'];
+  const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
+  let kpiCfg = { order: [], colors: {}, hidden: [] };
+
+  function loadKpiConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KPI_CFG_KEY)) || {}; } catch { saved = {}; }
+    const known = KPI_DEFS.map(d => d.key);
+    // Se respeta el orden guardado, pero cualquier KPI nuevo del código se añade al final
+    const order = (Array.isArray(saved.order) ? saved.order : []).filter(k => known.includes(k));
+    known.forEach(k => { if (!order.includes(k)) order.push(k); });
+    kpiCfg = {
+      order,
+      colors: (saved.colors && typeof saved.colors === 'object') ? saved.colors : {},
+      hidden: Array.isArray(saved.hidden) ? saved.hidden.filter(k => known.includes(k)) : [],
+    };
+  }
+
+  function saveKpiConfig() {
+    try { localStorage.setItem(KPI_CFG_KEY, JSON.stringify(kpiCfg)); } catch {}
+  }
+
+  const kpiDef      = key => KPI_DEFS.find(d => d.key === key);
+  const kpiColorOf  = key => kpiCfg.colors[key] || kpiDef(key).color;
+  const kpiVisible  = key => !kpiCfg.hidden.includes(key);
+  // Un KPI oculto no existe en el DOM: escribir sin comprobar rompería el render entero
+  const setKpiText  = (id, val)  => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setKpiHtml  = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  function renderKpis() {
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = kpiCfg.order.filter(kpiVisible).map(key => {
+      const d = kpiDef(key);
+      return `
+        <div class="kpi-card" data-kpi="${key}" style="--kc:var(--${kpiColorOf(key)})">
+          <div class="kpi-label">${d.label}</div>
+          <div class="kpi-value" id="${d.valueId}">0</div>
+          <div class="kpi-sub"${d.key === 'hoy' ? ' id="kpiHoySub"' : ''}>${d.sub}</div>
+          <div class="kpi-extra" id="${d.extraId}"></div>
+        </div>`;
+    }).join('');
+    enableKpiDrag();
+    if (data.length || ubicadosHoy) updateKPIs();
+  }
+
+  // ===== Reordenar KPIs arrastrando (Pointer Events: vale para ratón y para dedo) =====
+  function enableKpiDrag() {
+    const grid = document.getElementById('kpiGrid');
+    grid.querySelectorAll('.kpi-card').forEach(card => {
+      card.addEventListener('pointerdown', e => startKpiDrag(e, card, grid));
+    });
+  }
+
+  function startKpiDrag(e, card, grid) {
+    if (e.button !== undefined && e.button !== 0) return;   // solo botón principal
+    const touch  = e.pointerType !== 'mouse';
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false, holdTimer = null;
+
+    const begin = () => {
+      dragging = true;
+      card.classList.add('kpi-dragging');
+      grid.classList.add('dragging-active');
+      window.getSelection()?.removeAllRanges();   // evita dejar texto seleccionado al arrastrar
+      try { card.setPointerCapture(e.pointerId); } catch {}
+    };
+
+    // En táctil hace falta mantener pulsado para no secuestrar el scroll de la página
+    if (touch) holdTimer = setTimeout(begin, 220);
+
+    const onMove = ev => {
+      if (!dragging) {
+        const moved = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (touch) { if (moved > 10) { clearTimeout(holdTimer); cleanup(); } return; }
+        if (moved < 5) return;                               // con ratón, arrastre directo
+        begin();
+      }
+      ev.preventDefault();
+      const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.kpi-card');
+      if (!under || under === card || under.parentElement !== grid) return;
+      // insertBefore basta: si la tarjeta va "hacia delante" se inserta después de la destino
+      const cards = [...grid.querySelectorAll('.kpi-card')];
+      const after = cards.indexOf(card) < cards.indexOf(under);
+      grid.insertBefore(card, after ? under.nextSibling : under);
+    };
+
+    const onUp = () => {
+      clearTimeout(holdTimer);
+      if (dragging) {
+        card.classList.remove('kpi-dragging');
+        grid.classList.remove('dragging-active');
+        kpiCfg.order = [...grid.querySelectorAll('.kpi-card')].map(c => c.dataset.kpi)
+          .concat(kpiCfg.order.filter(k => !kpiVisible(k)));   // los ocultos conservan su sitio al final
+        saveKpiConfig();
+        renderCfgPanel();
+      }
+      cleanup();
+    };
+
+    function cleanup() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }
+
+  // ===== Panel de configuración =====
+  function toggleConfig() {
+    document.getElementById('historialPanel').classList.remove('open');
+    document.getElementById('histOverlay').classList.remove('open');
+    document.getElementById('histUbicPanel').classList.remove('open');
+    document.getElementById('histUbicOverlay').classList.remove('open');
+    const panel  = document.getElementById('cfgPanel');
+    const isOpen = panel.classList.toggle('open');
+    document.getElementById('cfgOverlay').classList.toggle('open', isOpen);
+    document.getElementById('cfgBtn').classList.toggle('active', isOpen);
+    if (isOpen) renderCfgPanel();
+  }
+
+  function renderCfgPanel() {
+    const list = document.getElementById('cfgList');
+    if (!list) return;
+    list.innerHTML = kpiCfg.order.map(key => {
+      const d = kpiDef(key), activo = kpiColorOf(key), visible = kpiVisible(key);
+      return `
+        <div class="cfg-row" style="--kc:var(--${activo})">
+          <div class="cfg-row-top">
+            <span class="cfg-name">${d.label}</span>
+            <button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleKpiVisible('${key}')"
+                    title="${visible ? 'Ocultar del tablero' : 'Mostrar en el tablero'}"></button>
+          </div>
+          <div class="cfg-swatches">
+            ${KPI_COLORS.map(c => `
+              <button class="cfg-sw ${c === activo ? 'active' : ''}" style="--swc:var(--${c})"
+                      onclick="setKpiColor('${key}','${c}')" title="${c}"><i></i></button>`).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function setKpiColor(key, color) {
+    kpiCfg.colors[key] = color;
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+
+  function toggleKpiVisible(key) {
+    if (kpiVisible(key)) kpiCfg.hidden.push(key);
+    else kpiCfg.hidden = kpiCfg.hidden.filter(k => k !== key);
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+
+  function resetKpiConfig() {
+    if (!confirm('¿Restablecer el orden, los colores y la visibilidad de los KPIs?')) return;
+    try { localStorage.removeItem(KPI_CFG_KEY); } catch {}
+    loadKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+
+  loadKpiConfig();
+  renderKpis();
 
   // ===== AUTH =====
   sb.auth.onAuthStateChange((event, session) => {
@@ -773,9 +996,9 @@
   }
 
   function renderKpiExtraUbicados() {
-    document.getElementById('kpiExtraUbicados').innerHTML = notaHoy
+    setKpiHtml('kpiExtraUbicados', notaHoy
       ? `<div style="font-style:italic;line-height:1.4;">"${esc(notaHoy)}"</div>`
-      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`;
+      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`);
   }
 
   // ===== ESTADOS =====
@@ -817,44 +1040,46 @@
     const enRecep   = data.filter(r => normEstado(r.estado) === 'recepcion');
 
     const sumPalets = rows => rows.reduce((s,r) => s + (Number(r.palets) || 0), 0);
-    const totalPalets          = sumPalets(enPrep);
+    const totalPalets          = sumPalets(data);          // TODOS los estados
+    const paletsEnPrep         = sumPalets(enPrep);        // solo Reponer (para los desgloses)
     const totalPendientes      = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const totalUbicados        = enPrep.reduce((s,r) => s + (Number(r.ubicados) || 0), 0);
     const totalPaletsTransito  = sumPalets(enTransit);
     const totalPaletsRecepcion = enRecep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const nEnTransito = enTransit.length, nEnRecep = enRecep.length, nEnPrep = enPrep.length;
 
-    document.getElementById('kpiFacturas').textContent        = data.length;
-    document.getElementById('kpiPendientes').textContent      = totalPendientes;
-    document.getElementById('kpiHoy').textContent             = ubicadosHoy;
-    document.getElementById('kpiPalets').textContent          = totalPalets;
-    document.getElementById('kpiPaletsTransito').textContent  = totalPaletsTransito;
-    document.getElementById('kpiPaletsRecepcion').textContent = totalPaletsRecepcion;
-    document.getElementById('kpiHoySub').textContent          = 'Palés ubicados hoy';
+    setKpiText('kpiFacturas',        data.length);
+    setKpiText('kpiPendientes',      totalPendientes);
+    setKpiText('kpiHoy',             ubicadosHoy);
+    setKpiText('kpiPalets',          totalPalets);
+    setKpiText('kpiPaletsTransito',  totalPaletsTransito);
+    setKpiText('kpiPaletsRecepcion', totalPaletsRecepcion);
 
-    const pctPend = totalPalets > 0 ? Math.round((totalPendientes / totalPalets) * 100) : 0;
-    const avg     = nEnPrep > 0 ? (totalPalets / nEnPrep).toFixed(1) : '0';
+    // Pendientes se mide contra los palets en Reponer, no contra el total global:
+    // de lo contrario el porcentaje se diluye con lo que aún está en tránsito o recepción.
+    const pctPend = paletsEnPrep > 0 ? Math.round((totalPendientes / paletsEnPrep) * 100) : 0;
+    const avg     = data.length > 0 ? (totalPalets / data.length).toFixed(1) : '0';
 
-    document.getElementById('kpiExtraFacturas').innerHTML =
+    setKpiHtml('kpiExtraFacturas',
       `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
       `<span><span>📦 Recepción</span><b>${nEnRecep}</b></span>` +
-      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`;
+      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`);
 
-    document.getElementById('kpiExtraPendientes').innerHTML =
-      `<span><span>% sobre total palets</span><b>${pctPend}%</b></span>` +
-      `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`;
+    setKpiHtml('kpiExtraPendientes',
+      `<span><span>% sobre palets en reponer</span><b>${pctPend}%</b></span>` +
+      `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`);
 
     renderKpiExtraUbicados();
 
-    document.getElementById('kpiExtraPalets').innerHTML =
+    setKpiHtml('kpiExtraPalets',
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
-      `<span><span>Facturas en reponer</span><b>${nEnPrep}</b></span>`;
+      `<span><span>En reponer</span><b>${paletsEnPrep}</b></span>`);
 
-    document.getElementById('kpiExtraPaletsTransito').innerHTML =
-      `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`;
+    setKpiHtml('kpiExtraPaletsTransito',
+      `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`);
 
-    document.getElementById('kpiExtraPaletsRecepcion').innerHTML =
-      `<span><span>Facturas en recepción</span><b>${nEnRecep}</b></span>`;
+    setKpiHtml('kpiExtraPaletsRecepcion',
+      `<span><span>Facturas en recepción</span><b>${nEnRecep}</b></span>`);
   }
 
   function render() { renderDesktop(); renderMobile(); updateKPIs(); }
@@ -1120,7 +1345,7 @@
     await sb.from('historial_ubicados_dia')
       .upsert({ fecha: todayISO, palets_ubicados: newCount }, { onConflict: 'fecha' });
     ubicadosHoy = newCount;
-    document.getElementById('kpiHoy').textContent = newCount;
+    setKpiText('kpiHoy', newCount);
     histUbicLoaded = false;
   }
 
@@ -1333,9 +1558,9 @@
             <div>
               <div class="cierre-date">${fecha} · ${hora}</div>
               <div class="cierre-stats">
-                <div class="cierre-stat"><b>${c.total_facturas}</b> facturas</div>
-                <div class="cierre-stat"><b>${c.total_palets}</b> palets</div>
-                <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
+                <div class="cierre-stat"><b id="hc-fact-${c.id}">${c.total_facturas}</b> facturas</div>
+                <div class="cierre-stat"><b id="hc-pal-${c.id}">${c.total_palets}</b> palets</div>
+                <div class="cierre-stat" style="color:var(--warn)"><b id="hc-pend-${c.id}">${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
             <span class="cierre-chevron">▼</span>
@@ -1402,12 +1627,28 @@
       exps[idx] = { ...exps[idx], factura: fact.value.trim() || null, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
     });
 
-    const payload = { nota: notaVal, expediciones: exps };
+    // La cabecera (N facturas · N palets · N pendientes) es un resumen de `expediciones`;
+    // se recalcula desde los datos recién editados para que nunca quede desactualizada.
+    const nTotalFacturas   = exps.length;
+    const nTotalPalets     = exps.reduce((s, e) => s + (Number(e.palets)   || 0), 0);
+    const nTotalPendientes = exps.reduce((s, e) => s + (Number(e.p_ubicar) || 0), 0);
+
+    const payload = {
+      nota: notaVal, expediciones: exps,
+      total_facturas: nTotalFacturas, total_palets: nTotalPalets, total_pendientes: nTotalPendientes,
+    };
     const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
 
     cierre.nota = notaVal;
     cierre.expediciones = exps;
+    cierre.total_facturas   = nTotalFacturas;
+    cierre.total_palets     = nTotalPalets;
+    cierre.total_pendientes = nTotalPendientes;
+
+    document.getElementById('hc-fact-' + id).textContent = nTotalFacturas;
+    document.getElementById('hc-pal-'  + id).textContent = nTotalPalets;
+    document.getElementById('hc-pend-' + id).textContent = nTotalPendientes;
 
     nota.value = notaVal || ''; nota.dataset.orig = notaVal || '';
     rows.forEach((row, idx) => {
@@ -1554,7 +1795,7 @@
     if (fecha === todayISO) {
       ubicadosHoy = paletsVal;
       notaHoy = notaVal || '';
-      document.getElementById('kpiHoy').textContent = ubicadosHoy;
+      setKpiText('kpiHoy', ubicadosHoy);
       renderKpiExtraUbicados();
     }
   }
@@ -1568,7 +1809,7 @@
     if (fecha === todayISO) {
       ubicadosHoy = 0;
       notaHoy = '';
-      document.getElementById('kpiHoy').textContent = 0;
+      setKpiText('kpiHoy', 0);
       renderKpiExtraUbicados();
     }
   }
