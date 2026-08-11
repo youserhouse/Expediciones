@@ -939,17 +939,18 @@
   // colorVar/colorDefault: solo las columnas con número/texto coloreable lo llevan;
   // el resto (fechas, factura, calle, obs, estado) solo tienen orden/ancho/visibilidad.
   const TABLE_COLS = [
-    { key:'fecha',          label:'Fecha de Registro', width:150, colorVar:null,            colorDefault:null     },
-    { key:'fecha_prevista', label:'Fecha Prevista',    width:150, colorVar:null,            colorDefault:null     },
-    { key:'dest',           label:'Destinatario',      width:150, colorVar:'col-dest',       colorDefault:'accent2' },
-    { key:'factura',        label:'Factura',           width:130, colorVar:null,            colorDefault:null     },
-    { key:'palets',         label:'Total Palets',      width:135, colorVar:'col-palets',     colorDefault:'warn'    },
-    { key:'ubicados',       label:'Ubicados',          width:110, colorVar:'col-ubicados',   colorDefault:'accent'  },
-    { key:'p_ubicar',       label:'P. por ubicar',     width:130, colorVar:'col-pendientes', colorDefault:null     }, // null = sin color propio (var(--text))
-    { key:'calle',          label:'Calle',             width:90,  colorVar:null,            colorDefault:null     },
-    { key:'obs',            label:'Observaciones',     width:170, colorVar:null,            colorDefault:null     },
-    { key:'estado',         label:'Estado',            width:140, colorVar:null,            colorDefault:null     },
+    { key:'fecha',          label:'Fecha de Registro', width:140, colorVar:null,            colorDefault:null     },
+    { key:'fecha_prevista', label:'Fecha Prevista',    width:140, colorVar:null,            colorDefault:null     },
+    { key:'dest',           label:'Destinatario',      width:140, colorVar:'col-dest',       colorDefault:'accent2' },
+    { key:'factura',        label:'Factura',           width:110, colorVar:null,            colorDefault:null     },
+    { key:'palets',         label:'Total Palets',      width:130, colorVar:'col-palets',     colorDefault:'warn'    },
+    { key:'ubicados',       label:'Ubicados',          width:95,  colorVar:'col-ubicados',   colorDefault:'accent'  },
+    { key:'p_ubicar',       label:'P. por ubicar',     width:110, colorVar:'col-pendientes', colorDefault:null     }, // null = sin color propio (var(--text))
+    { key:'calle',          label:'Calle',             width:80,  colorVar:null,            colorDefault:null     },
+    { key:'obs',            label:'Observaciones',     width:140, colorVar:null,            colorDefault:null     },
+    { key:'estado',         label:'Estado',            width:120, colorVar:null,            colorDefault:null     },
   ];
+  const ACTIONS_COL_MIN = 90;   // ancho mínimo de la columna de acciones (lápiz/guardar/borrar)
   const tableColDef = key => TABLE_COLS.find(c => c.key === key);
   // Se reutiliza la misma clave de localStorage que la versión anterior (solo colores);
   // loadColumnConfig() detecta esa forma antigua y la migra a colors{} sin perder nada.
@@ -1016,7 +1017,7 @@
         <span class="col-resize-handle" onpointerdown="startColResize(event,'${key}')"></span>
       </th>`;
     }).join('') + `<th>—</th>`;
-    colgroup.innerHTML = visibleCols.map(key => `<col data-col="${key}" style="width:${columnWidth(key)}px">`).join('') + `<col style="width:90px">`;
+    colgroup.innerHTML = visibleCols.map(key => `<col data-col="${key}" style="width:${columnWidth(key)}px">`).join('') + `<col data-col="__acciones" style="width:${ACTIONS_COL_MIN}px">`;
     syncTableWidth();
     enableColDrag();
   }
@@ -1024,11 +1025,23 @@
   // table-layout:fixed solo respeta los anchos del <colgroup> al pixel si la propia
   // <table> tiene un width EXPLÍCITO ≥ la suma de sus columnas — con width:auto el
   // navegador cae de vuelta al layout automático (por contenido) e ignora los <col>.
+  //
+  // Cuando las columnas de datos no llenan el contenedor, el sobrante se le da ENTERO
+  // a la columna de acciones en vez de estirar la tabla: así las 10 columnas de datos
+  // conservan su ancho exacto (el redimensionado sigue siendo 1:1 y predecible) y a la
+  // vez no queda una franja de fondo vacía a la derecha de las filas.
   function syncTableWidth() {
-    const total = [...document.getElementById('tableColgroup').children]
-      .reduce((s, col) => s + (parseInt(col.style.width, 10) || 0), 0);
-    document.getElementById('expTable').style.width = total + 'px';
+    const cols     = [...document.getElementById('tableColgroup').children];
+    if (!cols.length) return;
+    const accCol   = cols[cols.length - 1];
+    const sumDatos = cols.slice(0, -1).reduce((s, col) => s + (parseInt(col.style.width, 10) || 0), 0);
+    const dispon   = document.querySelector('.desktop-table').clientWidth;
+    const accW     = Math.max(ACTIONS_COL_MIN, dispon - sumDatos);
+    accCol.style.width = accW + 'px';
+    document.getElementById('expTable').style.width = (sumDatos + accW) + 'px';
   }
+  // Al cambiar el tamaño de la ventana, recalcular cuánto le toca a la columna de acciones
+  window.addEventListener('resize', () => { if (document.getElementById('tableColgroup').children.length) syncTableWidth(); });
 
   // ===== Reordenar columnas arrastrando el encabezado (mismo patrón Pointer Events que los KPI) =====
   function enableColDrag() {
@@ -1231,9 +1244,17 @@
     cfgColorDropdownOpen = (cfgColorDropdownOpen === id) ? null : id;
     renderCfgPanel();
   }
-  // Cierra el desplegable si se hace clic fuera de él. renderCfgPanel() ya
-  // comprueba que #cfgList exista, así que es seguro llamarlo con el panel cerrado.
-  document.addEventListener('pointerdown', e => {
+  // Cierra el desplegable al hacer clic fuera de él.
+  // OJO: tiene que ser 'click' y NO 'pointerdown'. Con pointerdown, este listener
+  // corre ANTES de que el navegador dispare el click del botón pulsado; como aquí
+  // se llama a renderCfgPanel() (que reemplaza todo el innerHTML de #cfgList), el
+  // nodo pulsado queda desconectado del documento y su onclick inline ya no llega
+  // a dispararse nunca — se "tragaba" el primer clic sobre cualquier interruptor o
+  // cabecera del panel. Con 'click' el handler del botón ya se ejecutó cuando el
+  // evento burbujea hasta aquí, así que ambas cosas ocurren.
+  // e.target puede estar ya desconectado (si su handler re-renderizó el panel);
+  // closest() sigue funcionando sobre el subárbol viejo, que conserva su estructura.
+  document.addEventListener('click', e => {
     if (!cfgColorDropdownOpen) return;
     if (e.target.closest('.cfg-color-wrap')) return;
     cfgColorDropdownOpen = null;
@@ -1577,7 +1598,7 @@
   function renderDesktop() {
     const tbody = document.getElementById('tableBody');
     const visibleCols = tableColCfg.order.filter(columnVisible);
-    if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="${visibleCols.length+1}">Sin expediciones registradas</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="${visibleCols.length+1}">Sin expediciones registradas</td></tr>`; syncTableWidth(); return; }
     tbody.innerHTML = data.map((r,i) => {
       const pct   = Math.min(100, ((Number(r.palets)||0)/80)*100);
       const total = Number(r.palets)   || 0;
@@ -1594,6 +1615,9 @@
         </td>
       </tr>`;
     }).join('');
+    // renderTableHead() corre al arrancar, cuando #appContent aún está oculto y el
+    // contenedor mide 0: hay que recalcular el reparto ya con la tabla visible.
+    syncTableWidth();
   }
 
   function statusLabel(s) { const e = normEstado(s); return `${ESTADO_ICON[e]} ${ESTADO_TEXT[e]}`; }
