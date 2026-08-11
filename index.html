@@ -35,6 +35,7 @@
     --danger: #ff4d6d;
     --purple: #a78bfa;
     --cyan: #22d3ee;
+    --white: #ffffff;
     --text: #e8eaf2;
     --muted: #5a6180;
 
@@ -48,6 +49,7 @@
     --col-palets:            var(--warn);
     --col-ubicados:          var(--accent);
     --col-pendientes:        var(--text);
+    --col-dest:              var(--accent2);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -432,7 +434,7 @@
   .mobile-cards { display:none; padding:12px; gap:12px; flex-direction:column; }
   .m-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px; }
   .m-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-  .m-dest { font-weight:700; color:var(--accent2); letter-spacing:1px; font-size:.9rem; }
+  .m-dest { font-weight:700; color:var(--col-dest); letter-spacing:1px; font-size:.9rem; }
   .m-factura { font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--muted); }
   .m-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
   .m-field label { font-size:.6rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:3px; }
@@ -449,8 +451,8 @@
   .ci:focus  { border-color:var(--accent); background:var(--surface2); box-shadow:0 0 0 2px rgba(0,229,160,.1); }
   input[type="date"].ci { font-family:'JetBrains Mono',monospace; font-size:.75rem; color:var(--muted); color-scheme:dark; min-width:110px; }
   input[type="number"].ci { text-align:center; }
-  .ci-dest  { font-weight:700; color:var(--accent2) !important; text-transform:uppercase; }
-  .ci-dest:focus { color:var(--accent2) !important; }
+  .ci-dest  { font-weight:700; color:var(--col-dest) !important; text-transform:uppercase; }
+  .ci-dest:focus { color:var(--col-dest) !important; }
   .ci-fact  { font-family:'JetBrains Mono',monospace !important; font-size:.8rem !important; }
   .ci-num   { max-width:70px; }
   .ci-ubic  { max-width:70px; color:var(--col-ubicados) !important; font-weight:600; }
@@ -490,7 +492,7 @@
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
-  .pb-bar   { height:100%; background:var(--warn); border-radius:2px; transition:width .6s ease; }
+  .pb-bar   { height:100%; background:var(--col-palets); border-radius:2px; transition:width .6s ease; }
 
   .del-btn {
     background:none; border:1px solid transparent; color:var(--muted);
@@ -805,7 +807,7 @@
     { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn',    mirrorsEstado:'en_transito' },
     { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin ubicar',   color:'accent2', mirrorsEstado:'recepcion' },
   ];
-  const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan'];
+  const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan', 'white'];
   const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
   // linked: si es true (por defecto), los KPI con mirrorsEstado siguen el color de su
   // estado. El interruptor "Vincular con Estado" del apartado KPIs lo apaga para los 4 a la vez.
@@ -886,8 +888,9 @@
     renderCfgPanel();
   }
 
-  // ===== Columnas: color configurable de los campos numéricos de la tabla =====
+  // ===== Columnas: color configurable de los campos de la tabla =====
   const COLUMN_CFG_DEFS = [
+    { key:'dest',       label:'Destinatario',  cssVar:'col-dest',       default:'accent2' },
     { key:'palets',     label:'Total Palets',  cssVar:'col-palets',     default:'warn'   },
     { key:'ubicados',   label:'Ubicados',      cssVar:'col-ubicados',   default:'accent' },
     { key:'pendientes', label:'P. por ubicar', cssVar:'col-pendientes', default:null     }, // null = sin color propio (var(--text))
