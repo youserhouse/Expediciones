@@ -35,8 +35,21 @@
     --danger: #ff4d6d;
     --purple: #a78bfa;
     --cyan: #22d3ee;
+    --white: #ffffff;
     --text: #e8eaf2;
     --muted: #5a6180;
+
+    /* Colores configurables desde Configuración (JS los reasigna vía setProperty).
+       Los valores por defecto apuntan a las variables de siempre, así que sin
+       personalizar nada el aspecto es idéntico al de antes. */
+    --estado-en_transito:    var(--warn);
+    --estado-recepcion:      var(--accent2);
+    --estado-en_preparacion: var(--accent);
+    --estado-completado:     var(--danger);
+    --col-palets:            var(--warn);
+    --col-ubicados:          var(--accent);
+    --col-pendientes:        var(--text);
+    --col-dest:              var(--accent2);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -167,17 +180,19 @@
     content:''; position:absolute; top:0; left:0; right:0; height:2px;
     background: var(--kc, var(--accent)); opacity:.8;
   }
-  .kpi-card:nth-child(1){--kc:var(--danger);  animation-delay:.05s}
-  .kpi-card:nth-child(2){--kc:var(--warn);    animation-delay:.10s}
-  .kpi-card:nth-child(3){--kc:var(--purple);  animation-delay:.15s}
-  .kpi-card:nth-child(4){--kc:var(--accent2); animation-delay:.20s}
-  .kpi-card:nth-child(5){--kc:var(--accent);  animation-delay:.25s}
-  .kpi-card:nth-child(6){--kc:var(--cyan);    animation-delay:.30s}
+  /* El color (--kc) lo asigna renderKpis() por KPI, no por posición: al reordenar
+     las tarjetas cada KPI conserva su color. Aquí solo queda la animación de entrada. */
+  .kpi-card:nth-child(1){animation-delay:.05s}
+  .kpi-card:nth-child(2){animation-delay:.10s}
+  .kpi-card:nth-child(3){animation-delay:.15s}
+  .kpi-card:nth-child(4){animation-delay:.20s}
+  .kpi-card:nth-child(5){animation-delay:.25s}
+  .kpi-card:nth-child(6){animation-delay:.30s}
   .kpi-label { font-size:.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
   .kpi-value { font-family:'Bebas Neue',sans-serif; font-size:clamp(2rem,4vw,2.8rem); line-height:1; color:var(--kc,var(--accent)); }
   .kpi-sub   { font-size:.68rem; color:var(--muted); margin-top:5px; }
   .kpi-card {
-    cursor: default;
+    cursor: grab;
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   }
   .kpi-card:hover {
@@ -195,6 +210,101 @@
   .kpi-card:hover .kpi-extra { max-height: 120px; opacity: 1; padding-top: 7px; }
   .kpi-extra span { display: flex; justify-content: space-between; }
   .kpi-extra b    { color: var(--kc, var(--accent)); font-weight: 600; }
+
+  /* ===== KPI: arrastrar para reordenar ===== */
+  .kpi-grid.dragging-active { touch-action: none; user-select: none; -webkit-user-select: none; }
+  .kpi-card.kpi-dragging {
+    opacity: .85; transform: scale(1.04); z-index: 20;
+    box-shadow: 0 14px 40px -10px color-mix(in srgb, var(--kc, var(--accent)) 60%, transparent);
+    border-color: var(--kc, var(--accent));
+    cursor: grabbing; animation: none;
+  }
+  .kpi-card.kpi-dragging .kpi-extra { max-height: 0; opacity: 0; padding-top: 0; }
+
+  /* ===== CONFIGURACIÓN ===== */
+  .cfg-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .cfg-btn:hover, .cfg-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.08); }
+  /* Apartados de Configuración: cada uno es un acordeón (KPIs / Columnas / Estado) */
+  #cfgList { padding: 0; gap: 0; }
+  .cfg-section { border-bottom: 1px solid var(--border); }
+  .cfg-section:last-child { border-bottom: none; }
+  .cfg-section-head {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; color: var(--text); cursor: pointer;
+    padding: 14px 16px; font-family: 'Bebas Neue', sans-serif; font-size: .95rem; letter-spacing: 2px;
+  }
+  .cfg-section-head:hover { color: var(--accent); }
+  .cfg-section-chevron { color: var(--muted); font-size: .7rem; transition: transform .2s; flex-shrink: 0; }
+  .cfg-section-chevron.open { transform: rotate(180deg); }
+  .cfg-section-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+  .cfg-section-body.open { max-height: 2400px; }
+  .cfg-section-hint { font-size: .68rem; color: var(--muted); line-height: 1.5; padding: 0 16px 12px; }
+  .cfg-section-rows { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+  .cfg-note { font-size: .68rem; color: var(--muted); font-style: italic; }
+  .cfg-link-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(0,229,160,.05); border: 1px dashed var(--border); border-radius: 12px;
+    padding: 12px 14px; flex-shrink: 0;
+  }
+  .cfg-link-label { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .cfg-link-desc { font-size: .66rem; color: var(--muted); margin-top: 3px; line-height: 1.4; max-width: 300px; }
+  .cfg-row {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+  }
+  .cfg-row-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cfg-name { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .cfg-name::before {
+    content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--kc, var(--accent)); margin-right: 8px; vertical-align: middle;
+  }
+  .cfg-swatches { display: flex; gap: 7px; flex-wrap: wrap; }
+  .cfg-sw {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+    border: 2px solid transparent; transition: all .15s; padding: 0; background: none;
+  }
+  .cfg-sw i { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--swc); }
+  .cfg-sw:hover { transform: scale(1.15); }
+  .cfg-sw.active { border-color: var(--text); transform: scale(1.1); }
+  .cfg-toggle {
+    position: relative; width: 38px; height: 21px; border-radius: 999px; flex-shrink: 0;
+    background: var(--border); border: none; cursor: pointer; transition: background .2s; padding: 0;
+  }
+  .cfg-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 15px; height: 15px;
+    border-radius: 50%; background: var(--muted); transition: all .2s;
+  }
+  .cfg-toggle.on { background: rgba(0,229,160,.25); }
+  .cfg-toggle.on::after { left: 20px; background: var(--accent); }
+  .cfg-reset {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 9px 14px; border-radius: 8px; cursor: pointer; transition: all .15s;
+    font-family: 'DM Sans', sans-serif; font-size: .74rem; letter-spacing: .5px; width: 100%;
+  }
+  .cfg-reset:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,77,109,.06); }
+
+  /* Selector de color desplegable: reemplaza la fila de círculos siempre visible.
+     El panel se expande EN FLUJO NORMAL (max-height), nunca position:absolute —
+     .cfg-section-body tiene overflow:hidden y recortaría cualquier popover flotante. */
+  .cfg-color-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .cfg-color-trigger {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; transition: all .15s; color: var(--muted); font-size: .72rem;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .cfg-color-trigger:hover { border-color: var(--accent); color: var(--text); }
+  .cfg-color-trigger i { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--swc); flex-shrink: 0; }
+  .cfg-color-chevron { font-size: .6rem; transition: transform .2s; }
+  .cfg-color-chevron.open { transform: rotate(180deg); }
+  .cfg-color-panel { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+  .cfg-color-panel.open { max-height: 120px; padding-top: 2px; }
+  .cfg-color-custom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: .68rem; color: var(--muted); }
+  .cfg-color-custom input[type="color"] { width: 32px; height: 24px; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; padding: 0; }
 
   /* ===== HISTORIAL ===== */
   .hist-btn {
@@ -289,16 +399,17 @@
   .exp-dest { font-size: .8rem; font-weight: 700; color: var(--text); flex-shrink: 0; }
   .exp-fact { font-size: .68rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
   .exp-row-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .exp-meta { font-size: .68rem; color: var(--muted); }
+  .exp-meta { font-size: .68rem; color: var(--muted); display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
   .exp-meta b { color: var(--text); font-weight: 600; }
+  .exp-field { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
   .estado-badge { font-size: .62rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; }
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
   .estado-pendiente      { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-completado     { background: rgba(255,77,109,.12); color: var(--danger); }
-  .estado-en_preparacion { background: rgba(0,229,160,.12); color: var(--accent); }
-  .estado-en_transito     { background: rgba(255,184,48,.12); color: var(--warn); }
-  .estado-recepcion       { background: rgba(0,153,255,.12); color: var(--accent2); }
+  .estado-completado     { background: color-mix(in srgb, var(--estado-completado) 12%, transparent);     color: var(--estado-completado); }
+  .estado-en_preparacion { background: color-mix(in srgb, var(--estado-en_preparacion) 12%, transparent); color: var(--estado-en_preparacion); }
+  .estado-en_transito     { background: color-mix(in srgb, var(--estado-en_transito) 12%, transparent);   color: var(--estado-en_transito); }
+  .estado-recepcion       { background: color-mix(in srgb, var(--estado-recepcion) 12%, transparent);     color: var(--estado-recepcion); }
 
   /* ===== TABLE SECTION ===== */
   .table-section {
@@ -322,15 +433,25 @@
 
   /* ===== DESKTOP TABLE ===== */
   .desktop-table { display:block; overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; min-width:780px; }
+  table { table-layout:fixed; border-collapse:collapse; }
   thead th {
-    background:var(--surface2); padding:11px 12px;
+    position:relative; background:var(--surface2); padding:11px 16px 11px 12px;
     text-align:left; font-size:.62rem; font-weight:600;
     letter-spacing:2px; text-transform:uppercase; color:var(--muted);
     border-bottom:1px solid var(--border); white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; cursor:grab; user-select:none;
   }
+  thead th[data-col]:active { cursor:grabbing; }
   thead th:first-child { padding-left:24px; }
-  thead th:last-child  { padding-right:24px; text-align:center; }
+  thead th:last-child  { padding-right:24px; text-align:center; cursor:default; }
+  thead th.th-dragging { opacity:.45; background:var(--surface); }
+  .th-label { pointer-events:none; }
+  /* Redimensión estilo Excel: franja invisible sobre el borde derecho del <th> */
+  .col-resize-handle {
+    position:absolute; top:0; right:0; width:8px; height:100%;
+    cursor:col-resize; touch-action:none; z-index:2;
+  }
+  .col-resize-handle:hover, .col-resize-handle:active { background:rgba(0,229,160,.35); }
   tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
   tbody tr:hover { background:rgba(255,255,255,.02); }
   tbody tr:last-child { border-bottom:none; }
@@ -342,7 +463,7 @@
   .mobile-cards { display:none; padding:12px; gap:12px; flex-direction:column; }
   .m-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px; }
   .m-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-  .m-dest { font-weight:700; color:var(--accent2); letter-spacing:1px; font-size:.9rem; }
+  .m-dest { font-weight:700; color:var(--col-dest); letter-spacing:1px; font-size:.9rem; }
   .m-factura { font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--muted); }
   .m-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
   .m-field label { font-size:.6rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:3px; }
@@ -359,18 +480,31 @@
   .ci:focus  { border-color:var(--accent); background:var(--surface2); box-shadow:0 0 0 2px rgba(0,229,160,.1); }
   input[type="date"].ci { font-family:'JetBrains Mono',monospace; font-size:.75rem; color:var(--muted); color-scheme:dark; min-width:110px; }
   input[type="number"].ci { text-align:center; }
-  .ci-dest  { font-weight:700; color:var(--accent2) !important; text-transform:uppercase; }
-  .ci-dest:focus { color:var(--accent2) !important; }
+  .ci-dest  { font-weight:700; color:var(--col-dest) !important; text-transform:uppercase; }
+  .ci-dest:focus { color:var(--col-dest) !important; }
   .ci-fact  { font-family:'JetBrains Mono',monospace !important; font-size:.8rem !important; }
   .ci-num   { max-width:70px; }
-  .ci-ubic  { max-width:70px; color:var(--accent) !important; font-weight:600; }
-  .ci-ubic:focus { color:var(--accent) !important; }
+  .ci-ubic  { max-width:70px; color:var(--col-ubicados) !important; font-weight:600; }
+  .ci-ubic:focus { color:var(--col-ubicados) !important; }
+  .ci-pend  { color:var(--col-pendientes) !important; font-weight:600; }
+  .ci-pend:focus { color:var(--col-pendientes) !important; }
   .ci-palets {
+    font-family:'Bebas Neue',sans-serif !important; font-size:1.4rem !important;
+    color:var(--col-palets) !important; max-width:60px; text-align:center;
+  }
+  .ci-palets:focus { color:var(--col-palets) !important; }
+  /* Campo "Palés" del panel Historial Ubicados por Día: desacoplado de .ci-palets
+     a propósito, para que recolorear la columna Total Palets no lo afecte. */
+  .ci-diapalets {
     font-family:'Bebas Neue',sans-serif !important; font-size:1.4rem !important;
     color:var(--warn) !important; max-width:60px; text-align:center;
   }
-  .ci-palets:focus { color:var(--warn) !important; }
+  .ci-diapalets:focus { color:var(--warn) !important; }
   .ci-nota { font-size:.75rem !important; color:var(--muted) !important; font-style:italic; }
+  .ci-exp-fact { font-family:'JetBrains Mono',monospace !important; font-size:.68rem !important; color:var(--muted) !important; text-align:right; max-width:130px; padding:2px 5px; width:auto; }
+  .ci-exp-num  { width:auto; max-width:38px; font-size:.68rem !important; padding:1px 3px; text-align:center; }
+  .ci-exp-ubic, .ci-exp-ubic:focus { color:var(--accent) !important; font-weight:600; }
+  .ci-exp-pend, .ci-exp-pend:focus { color:var(--warn) !important; font-weight:600; }
   .ci-nota::placeholder { color:var(--muted); opacity:.5; font-style:italic; }
   select.ci { cursor:pointer; appearance:none; -webkit-appearance:none; padding-right:22px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a6180' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -380,14 +514,14 @@
   select.ci[data-v="pendiente"]      { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="ok"]             { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
   select.ci[data-v="tarde"]          { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_transito"]     { color:var(--warn);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="recepcion"]      { color:var(--accent2); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="en_preparacion"] { color:var(--accent);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
-  select.ci[data-v="completado"]     { color:var(--danger);  font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_transito"]     { color:var(--estado-en_transito);    font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="recepcion"]      { color:var(--estado-recepcion);      font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="en_preparacion"] { color:var(--estado-en_preparacion); font-weight:600; font-size:.75rem; letter-spacing:.5px; }
+  select.ci[data-v="completado"]     { color:var(--estado-completado);     font-weight:600; font-size:.75rem; letter-spacing:.5px; }
 
   .pw { display:flex; align-items:center; gap:7px; }
   .pb-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; min-width:30px; }
-  .pb-bar   { height:100%; background:var(--warn); border-radius:2px; transition:width .6s ease; }
+  .pb-bar   { height:100%; background:var(--col-palets); border-radius:2px; transition:width .6s ease; }
 
   .del-btn {
     background:none; border:1px solid transparent; color:var(--muted);
@@ -455,6 +589,9 @@
     .mobile-cards  { display: flex !important; }
     .form-grid { grid-template-columns: 1fr; }
     .fg.full { grid-column: 1; }
+    .historial-panel { width: 100%; right: -100%; }
+    .hist-header { padding: 16px; font-size: .95rem; letter-spacing: 2px; }
+    .hist-header span { min-width: 0; overflow-wrap: break-word; }
   }
   @media (max-width: 400px) {
     .kpi-grid { grid-template-columns: 1fr 1fr; }
@@ -497,49 +634,14 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         <span id="userEmail">—</span>
       </div>
+      <button class="cfg-btn" id="cfgBtn" onclick="toggleConfig()" title="Configuración"></button>
       <button class="logout-btn" onclick="doLogout()">Salir</button>
     </div>
   </header>
 
   <!-- KPIs -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Facturas</div>
-      <div class="kpi-value" id="kpiFacturas">0</div>
-      <div class="kpi-sub">Documentos registrados</div>
-      <div class="kpi-extra" id="kpiExtraFacturas"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Pendientes Ubicar</div>
-      <div class="kpi-value" id="kpiPendientes">0</div>
-      <div class="kpi-sub">Suma de P. por ubicar</div>
-      <div class="kpi-extra" id="kpiExtraPendientes"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Ubicados Hoy</div>
-      <div class="kpi-value" id="kpiHoy">0</div>
-      <div class="kpi-sub" id="kpiHoySub">Total Palets − Pendientes</div>
-      <div class="kpi-extra" id="kpiExtraUbicados"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Palets</div>
-      <div class="kpi-value" id="kpiPalets">0</div>
-      <div class="kpi-sub">Palets en reponer</div>
-      <div class="kpi-extra" id="kpiExtraPalets"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Palets en Tránsito</div>
-      <div class="kpi-value" id="kpiPaletsTransito">0</div>
-      <div class="kpi-sub">Unidades en tránsito</div>
-      <div class="kpi-extra" id="kpiExtraPaletsTransito"></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Palets en Recepción</div>
-      <div class="kpi-value" id="kpiPaletsRecepcion">0</div>
-      <div class="kpi-sub">Recibidos sin reponer</div>
-      <div class="kpi-extra" id="kpiExtraPaletsRecepcion"></div>
-    </div>
-  </div>
+  <!-- Las tarjetas las genera renderKpis() según el orden/color/visibilidad guardados -->
+  <div class="kpi-grid" id="kpiGrid"></div>
 
   <!-- TABLE -->
   <div class="table-section">
@@ -569,16 +671,13 @@
       </div>
     </div>
     <div class="desktop-table">
-      <table>
+      <table id="expTable">
+        <colgroup id="tableColgroup"></colgroup>
         <thead>
-          <tr>
-            <th>Fecha prevista</th><th>Destinatario</th><th>Factura</th>
-            <th>Total Palets</th><th>Ubicados</th><th>P. por ubicar</th><th>Calle</th>
-            <th>Observaciones</th><th>Estado</th><th>—</th>
-          </tr>
+          <tr id="tableHeadRow"></tr>
         </thead>
         <tbody id="tableBody">
-          <tr class="loading-row"><td colspan="10"><span class="spinner"></span>Cargando…</td></tr>
+          <tr class="loading-row"><td colspan="11"><span class="spinner"></span>Cargando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -592,7 +691,8 @@
   <div class="modal">
     <h2>Nueva Expedición</h2>
     <div class="form-grid">
-      <div class="fg"><label>Fecha prevista</label><input type="date" id="fFecha"></div>
+      <div class="fg"><label>Fecha de Registro</label><input type="date" id="fFecha"></div>
+      <div class="fg"><label>Fecha Prevista</label><input type="date" id="fFechaPrevista" placeholder="+8 días si se deja vacío"></div>
       <div class="fg"><label>Destinatario</label><input type="text" id="fDest" placeholder="Ej: MISFAT"></div>
       <div class="fg"><label>Nº Factura</label><input type="text" id="fFactura" placeholder="Ej: 26001125"></div>
       <div class="fg"><label>Total Palets</label><input type="number" id="fPalets" min="0" placeholder="0"
@@ -604,7 +704,7 @@
         <select id="fEstado">
           <option value="en_transito" selected>En tránsito</option>
           <option value="recepcion">Recepción</option>
-          <option value="en_preparacion">Reponer</option>
+          <option value="en_preparacion">Ubicar</option>
         </select>
       </div>
     </div>
@@ -678,6 +778,19 @@
   <div class="hist-pager" id="histUbicPager"></div>
 </div>
 
+<!-- PANEL DE CONFIGURACIÓN -->
+<div class="hist-overlay" id="cfgOverlay" onclick="toggleConfig()"></div>
+<div class="historial-panel" id="cfgPanel">
+  <div class="hist-header">
+    <span>Configuración</span>
+    <button onclick="toggleConfig()">✕</button>
+  </div>
+  <div class="hist-list" id="cfgList"></div>
+  <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;">
+    <button class="cfg-reset" onclick="resetAllConfig()">Restablecer por defecto</button>
+  </div>
+</div>
+
 <script>
   // ============================================================
   const SUPABASE_URL = 'https://ojjcyizjcofbdynrwpql.supabase.co';
@@ -687,6 +800,13 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const todayISO = new Date().toISOString().slice(0, 10);
   const now = new Date();
+  // Si no se indica Fecha Prevista, se calcula a 8 días desde la Fecha de Registro
+  // (o desde hoy si esta última tampoco se indicó).
+  function calcFechaPrevista(fechaRegistro) {
+    const base = new Date((fechaRegistro || todayISO) + 'T12:00:00');
+    base.setDate(base.getDate() + 8);
+    return base.toISOString().slice(0, 10);
+  }
   const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>';
   const ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>';
   const ICON_GEAR   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
@@ -704,6 +824,588 @@
   let histUbicPage = 1;
   document.getElementById('histGearBtn').innerHTML    = ICON_GEAR;
   document.getElementById('histUbicGearBtn').innerHTML = ICON_GEAR;
+  document.getElementById('cfgBtn').innerHTML          = ICON_GEAR;
+
+  // ===== KPIs: definición, orden, color y visibilidad =====
+  // Fuente única de verdad. El color va POR KPI (no por posición en la rejilla),
+  // así al reordenar las tarjetas cada una conserva el suyo.
+  // Los KPI que representan un estado usan su mismo color que en la columna Estado;
+  // los que no (Facturas, Total Palets) usan colores que ningún estado utiliza.
+  // mirrorsEstado: si está presente, el color de ese KPI no se elige aparte —
+  // sigue siempre al color configurado para ese estado (ver sección Estado).
+  const KPI_DEFS = [
+    { key:'facturas',   label:'Facturas',            valueId:'kpiFacturas',        extraId:'kpiExtraFacturas',        sub:'Documentos registrados', color:'purple',  mirrorsEstado:null },
+    { key:'pendientes', label:'Pendientes Ubicar',   valueId:'kpiPendientes',      extraId:'kpiExtraPendientes',      sub:'Suma de P. por ubicar',  color:'accent',  mirrorsEstado:'en_preparacion' },
+    { key:'hoy',        label:'Ubicados Hoy',        valueId:'kpiHoy',             extraId:'kpiExtraUbicados',        sub:'Palés ubicados hoy',     color:'accent',  mirrorsEstado:'en_preparacion' },
+    { key:'palets',     label:'Total Palets',        valueId:'kpiPalets',          extraId:'kpiExtraPalets',          sub:'Suma de Total palets',   color:'cyan',    mirrorsEstado:null },
+    { key:'transito',   label:'Palets en Tránsito',  valueId:'kpiPaletsTransito',  extraId:'kpiExtraPaletsTransito',  sub:'Unidades en tránsito',   color:'warn',    mirrorsEstado:'en_transito' },
+    { key:'recepcion',  label:'Palets en Recepción', valueId:'kpiPaletsRecepcion', extraId:'kpiExtraPaletsRecepcion', sub:'Recibidos sin ubicar',   color:'accent2', mirrorsEstado:'recepcion' },
+  ];
+  const KPI_COLORS  = ['accent', 'accent2', 'warn', 'danger', 'purple', 'cyan', 'white'];
+  // Valores hex de la paleta, para poder sembrar el <input type="color"> del selector
+  // "Personalizado" con algo válido aunque el color activo sea un token con nombre.
+  const KPI_COLOR_HEX = {
+    accent: '#00e5a0', accent2: '#0099ff', warn: '#ffb830', danger: '#ff4d6d',
+    purple: '#a78bfa', cyan: '#22d3ee', white: '#ffffff',
+  };
+  const isHexColor    = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+  // Un color guardado es un token de la paleta ("accent") o un hex libre ("#a1b2c3");
+  // esta función los normaliza al valor CSS utilizable en cualquiera de los dos casos.
+  const colorCssValue = v => isHexColor(v) ? v : `var(--${v})`;
+  const hexOf          = v => isHexColor(v) ? v : (KPI_COLOR_HEX[v] || '#ffffff');
+  const KPI_CFG_KEY = 'expediciones.kpiConfig.v1';
+  // linked: si es true (por defecto), los KPI con mirrorsEstado siguen el color de su
+  // estado. El interruptor "Vincular con Estado" del apartado KPIs lo apaga para los 4 a la vez.
+  let kpiCfg = { order: [], colors: {}, hidden: [], linked: true };
+
+  function loadKpiConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KPI_CFG_KEY)) || {}; } catch { saved = {}; }
+    const known = KPI_DEFS.map(d => d.key);
+    // Se respeta el orden guardado, pero cualquier KPI nuevo del código se añade al final
+    const order = (Array.isArray(saved.order) ? saved.order : []).filter(k => known.includes(k));
+    known.forEach(k => { if (!order.includes(k)) order.push(k); });
+    kpiCfg = {
+      order,
+      colors: (saved.colors && typeof saved.colors === 'object') ? saved.colors : {},
+      hidden: Array.isArray(saved.hidden) ? saved.hidden.filter(k => known.includes(k)) : [],
+      linked: saved.linked !== false,
+    };
+  }
+
+  function saveKpiConfig() {
+    try { localStorage.setItem(KPI_CFG_KEY, JSON.stringify(kpiCfg)); } catch {}
+  }
+
+  const kpiDef      = key => KPI_DEFS.find(d => d.key === key);
+  // Los KPI con mirrorsEstado siguen la variable del estado (p.ej. "estado-en_transito")
+  // solo mientras kpiCfg.linked esté activo; desvinculado, se comportan como cualquier
+  // otro KPI y usan su propio color guardado (o el de KPI_DEFS si aún no se eligió ninguno).
+  const kpiColorOf  = key => {
+    const d = kpiDef(key);
+    if (d.mirrorsEstado && kpiCfg.linked) return 'estado-' + d.mirrorsEstado;
+    return kpiCfg.colors[key] || d.color;
+  };
+
+  function toggleKpiEstadoLink() {
+    const linking = !kpiCfg.linked;
+    if (!linking) {
+      // Al desvincular, cada KPI ligado conserva el color que tenía en pantalla en ese
+      // instante (el de su estado actual), para que no haya un salto de color brusco.
+      KPI_DEFS.filter(d => d.mirrorsEstado).forEach(d => {
+        if (!kpiCfg.colors[d.key]) kpiCfg.colors[d.key] = estadoCfg[d.mirrorsEstado];
+      });
+    }
+    kpiCfg.linked = linking;
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+  const kpiVisible  = key => !kpiCfg.hidden.includes(key);
+  // Un KPI oculto no existe en el DOM: escribir sin comprobar rompería el render entero
+  const setKpiText  = (id, val)  => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setKpiHtml  = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  // ===== Estado: color configurable por estado =====
+  // Claves duplicadas de ESTADOS (definido más abajo en el script) porque este
+  // bloque corre antes; son solo 4 claves estables, no las etiquetas visibles.
+  const ESTADO_CFG_KEYS    = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
+  const ESTADO_CFG_DEFAULT = { en_transito:'warn', recepcion:'accent2', en_preparacion:'accent', completado:'danger' };
+  const ESTADO_CFG_KEY     = 'expediciones.estadoConfig.v1';
+  let estadoCfg = { ...ESTADO_CFG_DEFAULT };
+
+  function loadEstadoConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(ESTADO_CFG_KEY)) || {}; } catch { saved = {}; }
+    estadoCfg = { ...ESTADO_CFG_DEFAULT };
+    ESTADO_CFG_KEYS.forEach(k => { if (KPI_COLORS.includes(saved[k]) || isHexColor(saved[k])) estadoCfg[k] = saved[k]; });
+  }
+  function saveEstadoConfig() { try { localStorage.setItem(ESTADO_CFG_KEY, JSON.stringify(estadoCfg)); } catch {} }
+  // Fija las custom properties --estado-*; todo lo que las usa (badges, selects,
+  // y los KPI que las espejan vía --kc) se actualiza solo, sin volver a renderizar nada.
+  function applyEstadoColors() {
+    ESTADO_CFG_KEYS.forEach(k => document.documentElement.style.setProperty('--estado-' + k, colorCssValue(estadoCfg[k])));
+  }
+  function setEstadoColor(key, color) {
+    estadoCfg[key] = color;
+    saveEstadoConfig();
+    applyEstadoColors();
+    renderCfgPanel();
+  }
+
+  // ===== Columnas de la tabla: orden, ancho, visibilidad y color =====
+  // Fuente única de verdad de las 10 columnas de datos (la columna de acciones
+  // — lápiz/guardar/borrar — no es configurable y siempre va al final).
+  // colorVar/colorDefault: solo las columnas con número/texto coloreable lo llevan;
+  // el resto (fechas, factura, calle, obs, estado) solo tienen orden/ancho/visibilidad.
+  const TABLE_COLS = [
+    { key:'fecha',          label:'Fecha de Registro', width:140, colorVar:null,            colorDefault:null     },
+    { key:'fecha_prevista', label:'Fecha Prevista',    width:140, colorVar:null,            colorDefault:null     },
+    { key:'dest',           label:'Destinatario',      width:140, colorVar:'col-dest',       colorDefault:'accent2' },
+    { key:'factura',        label:'Factura',           width:110, colorVar:null,            colorDefault:null     },
+    { key:'palets',         label:'Total Palets',      width:130, colorVar:'col-palets',     colorDefault:'warn'    },
+    { key:'ubicados',       label:'Ubicados',          width:95,  colorVar:'col-ubicados',   colorDefault:'accent'  },
+    { key:'p_ubicar',       label:'P. por ubicar',     width:110, colorVar:'col-pendientes', colorDefault:null     }, // null = sin color propio (var(--text))
+    { key:'calle',          label:'Calle',             width:80,  colorVar:null,            colorDefault:null     },
+    { key:'obs',            label:'Observaciones',     width:140, colorVar:null,            colorDefault:null     },
+    { key:'estado',         label:'Estado',            width:120, colorVar:null,            colorDefault:null     },
+  ];
+  const ACTIONS_COL_MIN = 90;   // ancho mínimo de la columna de acciones (lápiz/guardar/borrar)
+  const tableColDef = key => TABLE_COLS.find(c => c.key === key);
+  // Se reutiliza la misma clave de localStorage que la versión anterior (solo colores);
+  // loadColumnConfig() detecta esa forma antigua y la migra a colors{} sin perder nada.
+  const COLUMN_CFG_KEY = 'expediciones.columnConfig.v1';
+  let tableColCfg = { order: [], hidden: [], widths: {}, colors: {} };
+
+  function loadColumnConfig() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(COLUMN_CFG_KEY)) || {}; } catch { saved = {}; }
+    const known  = TABLE_COLS.map(c => c.key);
+    const legacy = !Array.isArray(saved.order) && !Array.isArray(saved.hidden) && !saved.widths && !saved.colors;
+
+    const order = (Array.isArray(saved.order) ? saved.order : []).filter(k => known.includes(k));
+    known.forEach(k => { if (!order.includes(k)) order.push(k); });   // columnas nuevas del código se añaden al final
+
+    const colors = {};
+    TABLE_COLS.filter(c => c.colorVar).forEach(c => {
+      const raw = legacy ? saved[c.key] : (saved.colors && saved.colors[c.key]);
+      colors[c.key] = (KPI_COLORS.includes(raw) || isHexColor(raw)) ? raw : c.colorDefault;
+    });
+
+    tableColCfg = {
+      order,
+      hidden: Array.isArray(saved.hidden) ? saved.hidden.filter(k => known.includes(k)) : [],
+      widths: (saved.widths && typeof saved.widths === 'object') ? saved.widths : {},
+      colors,
+    };
+  }
+  function saveColumnConfig() { try { localStorage.setItem(COLUMN_CFG_KEY, JSON.stringify(tableColCfg)); } catch {} }
+  function applyColumnColors() {
+    TABLE_COLS.filter(c => c.colorVar).forEach(c => {
+      const v = tableColCfg.colors[c.key];
+      document.documentElement.style.setProperty('--' + c.colorVar, v ? colorCssValue(v) : 'var(--text)');
+    });
+  }
+  function setColumnColor(key, color) {
+    tableColCfg.colors[key] = color;
+    saveColumnConfig();
+    applyColumnColors();
+    renderCfgPanel();
+  }
+  const columnVisible = key => !tableColCfg.hidden.includes(key);
+  const columnWidth    = key => tableColCfg.widths[key] || tableColDef(key).width;
+  // Ocultar/mostrar y reordenar cambian qué <td>/<th> existen en el DOM, así que
+  // hace falta reconstruir tabla + tarjetas móviles, no solo tocar una custom property.
+  function toggleColumnVisible(key) {
+    if (columnVisible(key)) tableColCfg.hidden.push(key);
+    else tableColCfg.hidden = tableColCfg.hidden.filter(k => k !== key);
+    saveColumnConfig();
+    renderTableHead();
+    render();
+    renderCfgPanel();
+  }
+
+  // Encabezado + <colgroup> de la tabla, generados desde tableColCfg (antes eran <th> fijos en el HTML).
+  function renderTableHead() {
+    const headRow  = document.getElementById('tableHeadRow');
+    const colgroup = document.getElementById('tableColgroup');
+    const visibleCols = tableColCfg.order.filter(columnVisible);
+    headRow.innerHTML = visibleCols.map(key => {
+      const c = tableColDef(key);
+      return `<th data-col="${key}">
+        <span class="th-label">${c.label}</span>
+        <span class="col-resize-handle" onpointerdown="startColResize(event,'${key}')"></span>
+      </th>`;
+    }).join('') + `<th>—</th>`;
+    colgroup.innerHTML = visibleCols.map(key => `<col data-col="${key}" style="width:${columnWidth(key)}px">`).join('') + `<col data-col="__acciones" style="width:${ACTIONS_COL_MIN}px">`;
+    syncTableWidth();
+    enableColDrag();
+  }
+
+  // table-layout:fixed solo respeta los anchos del <colgroup> al pixel si la propia
+  // <table> tiene un width EXPLÍCITO ≥ la suma de sus columnas — con width:auto el
+  // navegador cae de vuelta al layout automático (por contenido) e ignora los <col>.
+  //
+  // Cuando las columnas de datos no llenan el contenedor, el sobrante se le da ENTERO
+  // a la columna de acciones en vez de estirar la tabla: así las 10 columnas de datos
+  // conservan su ancho exacto (el redimensionado sigue siendo 1:1 y predecible) y a la
+  // vez no queda una franja de fondo vacía a la derecha de las filas.
+  function syncTableWidth() {
+    const cols     = [...document.getElementById('tableColgroup').children];
+    if (!cols.length) return;
+    const accCol   = cols[cols.length - 1];
+    const sumDatos = cols.slice(0, -1).reduce((s, col) => s + (parseInt(col.style.width, 10) || 0), 0);
+    const dispon   = document.querySelector('.desktop-table').clientWidth;
+    const accW     = Math.max(ACTIONS_COL_MIN, dispon - sumDatos);
+    accCol.style.width = accW + 'px';
+    document.getElementById('expTable').style.width = (sumDatos + accW) + 'px';
+  }
+  // Al cambiar el tamaño de la ventana, recalcular cuánto le toca a la columna de acciones
+  window.addEventListener('resize', () => { if (document.getElementById('tableColgroup').children.length) syncTableWidth(); });
+
+  // ===== Reordenar columnas arrastrando el encabezado (mismo patrón Pointer Events que los KPI) =====
+  function enableColDrag() {
+    const headRow = document.getElementById('tableHeadRow');
+    headRow.querySelectorAll('th[data-col]').forEach(th => {
+      th.addEventListener('pointerdown', e => {
+        if (e.target.classList.contains('col-resize-handle')) return;   // ese borde redimensiona, no arrastra
+        startColDrag(e, th, headRow);
+      });
+    });
+  }
+
+  function startColDrag(e, th, headRow) {
+    if (e.button !== undefined && e.button !== 0) return;
+    const touch  = e.pointerType !== 'mouse';
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false, holdTimer = null;
+
+    const begin = () => {
+      dragging = true;
+      th.classList.add('th-dragging');
+      window.getSelection()?.removeAllRanges();
+      try { th.setPointerCapture(e.pointerId); } catch {}
+    };
+
+    if (touch) holdTimer = setTimeout(begin, 220);
+
+    const onMove = ev => {
+      if (!dragging) {
+        const moved = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (touch) { if (moved > 10) { clearTimeout(holdTimer); cleanup(); } return; }
+        if (moved < 5) return;
+        begin();
+      }
+      ev.preventDefault();
+      const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('th[data-col]');
+      if (!under || under === th || under.parentElement !== headRow) return;
+      const ths   = [...headRow.querySelectorAll('th[data-col]')];
+      const after = ths.indexOf(th) < ths.indexOf(under);
+      headRow.insertBefore(th, after ? under.nextSibling : under);
+    };
+
+    const onUp = () => {
+      clearTimeout(holdTimer);
+      if (dragging) {
+        th.classList.remove('th-dragging');
+        const newOrder = [...headRow.querySelectorAll('th[data-col]')].map(t => t.dataset.col)
+          .concat(tableColCfg.order.filter(k => !columnVisible(k)));   // las ocultas conservan su sitio
+        tableColCfg.order = newOrder;
+        saveColumnConfig();
+        renderTableHead();
+        render();
+        renderCfgPanel();
+      }
+      cleanup();
+    };
+
+    function cleanup() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }
+
+  // ===== Redimensionar columnas arrastrando el borde derecho (estilo Excel) =====
+  function startColResize(e, key) {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = columnWidth(key);
+    const col    = document.querySelector(`#tableColgroup col[data-col="${key}"]`);
+    if (!col) return;
+    try { e.target.setPointerCapture(e.pointerId); } catch {}
+
+    const onMove = ev => {
+      const w = Math.max(50, Math.round(startW + (ev.clientX - startX)));
+      col.style.width = w + 'px';
+      syncTableWidth();
+    };
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      tableColCfg.widths[key] = parseInt(col.style.width, 10);
+      saveColumnConfig();
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  function renderKpis() {
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = kpiCfg.order.filter(kpiVisible).map(key => {
+      const d = kpiDef(key);
+      return `
+        <div class="kpi-card" data-kpi="${key}" style="--kc:${colorCssValue(kpiColorOf(key))}">
+          <div class="kpi-label">${d.label}</div>
+          <div class="kpi-value" id="${d.valueId}">0</div>
+          <div class="kpi-sub"${d.key === 'hoy' ? ' id="kpiHoySub"' : ''}>${d.sub}</div>
+          <div class="kpi-extra" id="${d.extraId}"></div>
+        </div>`;
+    }).join('');
+    enableKpiDrag();
+    if (data.length || ubicadosHoy) updateKPIs();
+  }
+
+  // ===== Reordenar KPIs arrastrando (Pointer Events: vale para ratón y para dedo) =====
+  function enableKpiDrag() {
+    const grid = document.getElementById('kpiGrid');
+    grid.querySelectorAll('.kpi-card').forEach(card => {
+      card.addEventListener('pointerdown', e => startKpiDrag(e, card, grid));
+    });
+  }
+
+  function startKpiDrag(e, card, grid) {
+    if (e.button !== undefined && e.button !== 0) return;   // solo botón principal
+    const touch  = e.pointerType !== 'mouse';
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false, holdTimer = null;
+
+    const begin = () => {
+      dragging = true;
+      card.classList.add('kpi-dragging');
+      grid.classList.add('dragging-active');
+      window.getSelection()?.removeAllRanges();   // evita dejar texto seleccionado al arrastrar
+      try { card.setPointerCapture(e.pointerId); } catch {}
+    };
+
+    // En táctil hace falta mantener pulsado para no secuestrar el scroll de la página
+    if (touch) holdTimer = setTimeout(begin, 220);
+
+    const onMove = ev => {
+      if (!dragging) {
+        const moved = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (touch) { if (moved > 10) { clearTimeout(holdTimer); cleanup(); } return; }
+        if (moved < 5) return;                               // con ratón, arrastre directo
+        begin();
+      }
+      ev.preventDefault();
+      const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.kpi-card');
+      if (!under || under === card || under.parentElement !== grid) return;
+      // insertBefore basta: si la tarjeta va "hacia delante" se inserta después de la destino
+      const cards = [...grid.querySelectorAll('.kpi-card')];
+      const after = cards.indexOf(card) < cards.indexOf(under);
+      grid.insertBefore(card, after ? under.nextSibling : under);
+    };
+
+    const onUp = () => {
+      clearTimeout(holdTimer);
+      if (dragging) {
+        card.classList.remove('kpi-dragging');
+        grid.classList.remove('dragging-active');
+        kpiCfg.order = [...grid.querySelectorAll('.kpi-card')].map(c => c.dataset.kpi)
+          .concat(kpiCfg.order.filter(k => !kpiVisible(k)));   // los ocultos conservan su sitio al final
+        saveKpiConfig();
+        renderCfgPanel();
+      }
+      cleanup();
+    };
+
+    function cleanup() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }
+
+  // ===== Panel de configuración =====
+  function toggleConfig() {
+    document.getElementById('historialPanel').classList.remove('open');
+    document.getElementById('histOverlay').classList.remove('open');
+    document.getElementById('histUbicPanel').classList.remove('open');
+    document.getElementById('histUbicOverlay').classList.remove('open');
+    const panel  = document.getElementById('cfgPanel');
+    const isOpen = panel.classList.toggle('open');
+    document.getElementById('cfgOverlay').classList.toggle('open', isOpen);
+    document.getElementById('cfgBtn').classList.toggle('active', isOpen);
+    if (isOpen) renderCfgPanel();
+  }
+
+  // Qué apartados del panel están desplegados (solo en memoria; no persiste entre sesiones)
+  let cfgOpenSections = { kpis: true, columnas: false, estado: false };
+
+  function toggleCfgSection(name) {
+    cfgOpenSections[name] = !cfgOpenSections[name];
+    renderCfgPanel();
+  }
+
+  // Qué selector de color desplegable está abierto (id único tipo "kpi-facturas",
+  // "col-dest", "estado-en_transito"), o null si ninguno. Solo en memoria.
+  let cfgColorDropdownOpen = null;
+  function toggleCfgColorDropdown(id) {
+    cfgColorDropdownOpen = (cfgColorDropdownOpen === id) ? null : id;
+    renderCfgPanel();
+  }
+  // Cierra el desplegable al hacer clic fuera de él.
+  // OJO: tiene que ser 'click' y NO 'pointerdown'. Con pointerdown, este listener
+  // corre ANTES de que el navegador dispare el click del botón pulsado; como aquí
+  // se llama a renderCfgPanel() (que reemplaza todo el innerHTML de #cfgList), el
+  // nodo pulsado queda desconectado del documento y su onclick inline ya no llega
+  // a dispararse nunca — se "tragaba" el primer clic sobre cualquier interruptor o
+  // cabecera del panel. Con 'click' el handler del botón ya se ejecutó cuando el
+  // evento burbujea hasta aquí, así que ambas cosas ocurren.
+  // e.target puede estar ya desconectado (si su handler re-renderizó el panel);
+  // closest() sigue funcionando sobre el subárbol viejo, que conserva su estructura.
+  document.addEventListener('click', e => {
+    if (!cfgColorDropdownOpen) return;
+    if (e.target.closest('.cfg-color-wrap')) return;
+    cfgColorDropdownOpen = null;
+    renderCfgPanel();
+  });
+
+  // Paleta + "otra opción" (color personalizado vía <input type="color">), en un
+  // desplegable que se abre en flujo normal (ver comentario de .cfg-color-panel en el CSS).
+  function cfgColorPicker(id, activo, fnName, argValue) {
+    const open = cfgColorDropdownOpen === id;
+    return `
+      <div class="cfg-color-wrap">
+        <button class="cfg-color-trigger" onclick="toggleCfgColorDropdown('${id}')" title="Cambiar color">
+          <i style="--swc:${colorCssValue(activo)}"></i><span>Color</span>
+          <span class="cfg-color-chevron ${open ? 'open' : ''}">▾</span>
+        </button>
+        <div class="cfg-color-panel ${open ? 'open' : ''}">
+          <div class="cfg-swatches">${KPI_COLORS.map(c => `
+            <button class="cfg-sw ${c === activo ? 'active' : ''}" style="--swc:var(--${c})"
+                    onclick="${fnName}('${argValue}','${c}')" title="${c}"><i></i></button>`).join('')}
+          </div>
+          <label class="cfg-color-custom">
+            <span>Personalizado</span>
+            <input type="color" value="${hexOf(activo)}" oninput="${fnName}('${argValue}',this.value)">
+          </label>
+        </div>
+      </div>`;
+  }
+
+  function renderCfgPanel() {
+    const list = document.getElementById('cfgList');
+    if (!list) return;
+
+    const linkRow = `
+      <div class="cfg-link-row">
+        <div>
+          <div class="cfg-link-label">Vincular colores con Estado</div>
+          <div class="cfg-link-desc">Pendientes Ubicar, Ubicados Hoy, Palets en Tránsito y Palets en Recepción copian el color de su estado. Desactívalo para elegirles un color propio.</div>
+        </div>
+        <button class="cfg-toggle ${kpiCfg.linked ? 'on' : ''}" onclick="toggleKpiEstadoLink()"
+                title="${kpiCfg.linked ? 'Desvincular' : 'Vincular'}"></button>
+      </div>`;
+
+    const kpiRows = kpiCfg.order.map(key => {
+      const d = kpiDef(key), visible = kpiVisible(key);
+      const toggleBtn = `<button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleKpiVisible('${key}')"
+                    title="${visible ? 'Ocultar del tablero' : 'Mostrar en el tablero'}"></button>`;
+      if (d.mirrorsEstado && kpiCfg.linked) {
+        return `
+          <div class="cfg-row">
+            <div class="cfg-row-top">
+              <span class="cfg-name" style="--kc:${colorCssValue(kpiColorOf(key))}">${d.label}</span>
+              ${toggleBtn}
+            </div>
+            <div class="cfg-note">Color: sigue al estado "${ESTADO_TEXT[d.mirrorsEstado]}" — cámbialo en el apartado Estado</div>
+          </div>`;
+      }
+      const activo = kpiColorOf(key);
+      return `
+        <div class="cfg-row" style="--kc:${colorCssValue(activo)}">
+          <div class="cfg-row-top">
+            <span class="cfg-name">${d.label}</span>
+            ${toggleBtn}
+          </div>
+          ${cfgColorPicker('kpi-' + key, activo, 'setKpiColor', key)}
+        </div>`;
+    }).join('');
+
+    const colRows = tableColCfg.order.map(key => {
+      const c = tableColDef(key);
+      const visible = columnVisible(key);
+      const toggleBtn = `<button class="cfg-toggle ${visible ? 'on' : ''}" onclick="toggleColumnVisible('${key}')"
+                    title="${visible ? 'Ocultar columna' : 'Mostrar columna'}"></button>`;
+      const activo = c.colorVar ? (tableColCfg.colors[key] || c.colorDefault) : null;
+      return `
+        <div class="cfg-row" ${activo ? `style="--kc:${colorCssValue(activo)}"` : ''}>
+          <div class="cfg-row-top">
+            <span class="cfg-name">${c.label}</span>
+            ${toggleBtn}
+          </div>
+          ${c.colorVar ? cfgColorPicker('col-' + key, activo, 'setColumnColor', key) : ''}
+        </div>`;
+    }).join('');
+
+    const estRows = ESTADO_CFG_KEYS.map(key => {
+      const activo = estadoCfg[key];
+      return `
+        <div class="cfg-row" style="--kc:${colorCssValue(activo)}">
+          <div class="cfg-row-top"><span class="cfg-name">${ESTADO_TEXT[key]}</span></div>
+          ${cfgColorPicker('estado-' + key, activo, 'setEstadoColor', key)}
+        </div>`;
+    }).join('');
+
+    const section = (name, title, hint, bodyHtml) => `
+      <div class="cfg-section">
+        <button class="cfg-section-head" onclick="toggleCfgSection('${name}')">
+          <span>${title}</span>
+          <span class="cfg-section-chevron ${cfgOpenSections[name] ? 'open' : ''}">▾</span>
+        </button>
+        <div class="cfg-section-body ${cfgOpenSections[name] ? 'open' : ''}">
+          <div class="cfg-section-hint">${hint}</div>
+          <div class="cfg-section-rows">${bodyHtml}</div>
+        </div>
+      </div>`;
+
+    list.innerHTML =
+      section('kpis', 'KPIs', 'Arrastra las tarjetas del tablero para reordenarlas. Elige aquí su color y cuáles se ven.', linkRow + kpiRows) +
+      section('columnas', 'Columnas', 'Arrastra los encabezados de la tabla para reordenar columnas, arrastra su borde derecho para ensancharlas. Elige aquí su color (o uno personalizado) y cuáles se ven — también afecta a las tarjetas en móvil.', colRows) +
+      section('estado', 'Estado', 'Color de cada estado en la columna Estado. Los KPIs que representan un estado siguen este color automáticamente.', estRows);
+  }
+
+  function setKpiColor(key, color) {
+    kpiCfg.colors[key] = color;
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+
+  function toggleKpiVisible(key) {
+    if (kpiVisible(key)) kpiCfg.hidden.push(key);
+    else kpiCfg.hidden = kpiCfg.hidden.filter(k => k !== key);
+    saveKpiConfig();
+    renderKpis();
+    renderCfgPanel();
+  }
+
+  function resetAllConfig() {
+    if (!confirm('¿Restablecer el orden, los colores y la visibilidad de KPIs, columnas y estado?')) return;
+    try {
+      localStorage.removeItem(KPI_CFG_KEY);
+      localStorage.removeItem(ESTADO_CFG_KEY);
+      localStorage.removeItem(COLUMN_CFG_KEY);
+    } catch {}
+    loadKpiConfig();
+    loadEstadoConfig();
+    loadColumnConfig();
+    renderKpis();
+    applyEstadoColors();
+    applyColumnColors();
+    renderTableHead();
+    render();
+    renderCfgPanel();
+  }
+
+  loadKpiConfig();
+  loadEstadoConfig();
+  loadColumnConfig();
+  applyEstadoColors();
+  applyColumnColors();
+  renderKpis();
+  renderTableHead();
 
   // ===== AUTH =====
   sb.auth.onAuthStateChange((event, session) => {
@@ -749,7 +1451,7 @@
 
     if (error) {
       document.getElementById('tableBody').innerHTML =
-        `<tr class="error-row"><td colspan="10">⚠ Error al cargar datos: ${error.message}</td></tr>`;
+        `<tr class="error-row"><td colspan="11">⚠ Error al cargar datos: ${error.message}</td></tr>`;
       return;
     }
     data = rows || [];
@@ -765,26 +1467,28 @@
   }
 
   function renderKpiExtraUbicados() {
-    document.getElementById('kpiExtraUbicados').innerHTML = notaHoy
+    setKpiHtml('kpiExtraUbicados', notaHoy
       ? `<div style="font-style:italic;line-height:1.4;">"${esc(notaHoy)}"</div>`
-      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`;
+      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`);
   }
 
   // ===== ESTADOS =====
-  // Flujo: en_transito → recepcion → en_preparacion (Reponer) → completado (Factura finalizada)
+  // Flujo: en_transito → recepcion → en_preparacion (Ubicar) → completado (Factura finalizada)
   const ESTADOS = ['en_transito', 'recepcion', 'en_preparacion', 'completado'];
   const ESTADO_TEXT = {
     en_transito:    'En tránsito',
     recepcion:      'Recepción',
-    en_preparacion: 'Reponer',
+    en_preparacion: 'Ubicar',
     completado:     'Factura finalizada',
   };
   const ESTADO_ICON = { en_transito:'🚚', recepcion:'📦', en_preparacion:'🔧', completado:'✓' };
+  // Apunta a las custom properties configurables (ver :root); su valor real
+  // lo fija applyEstadoColors() al cargar y cada vez que se cambia en Configuración.
   const ESTADO_COLOR = {
-    en_transito:    'var(--warn)',
-    recepcion:      'var(--accent2)',
-    en_preparacion: 'var(--accent)',
-    completado:     'var(--danger)',
+    en_transito:    'var(--estado-en_transito)',
+    recepcion:      'var(--estado-recepcion)',
+    en_preparacion: 'var(--estado-en_preparacion)',
+    completado:     'var(--estado-completado)',
   };
 
   // Normaliza los valores antiguos que puedan quedar en el histórico
@@ -809,86 +1513,101 @@
     const enRecep   = data.filter(r => normEstado(r.estado) === 'recepcion');
 
     const sumPalets = rows => rows.reduce((s,r) => s + (Number(r.palets) || 0), 0);
-    const totalPalets          = sumPalets(enPrep);
+    const totalPalets          = sumPalets(data);          // TODOS los estados
+    const paletsEnPrep         = sumPalets(enPrep);        // solo Reponer (para los desgloses)
     const totalPendientes      = enPrep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const totalUbicados        = enPrep.reduce((s,r) => s + (Number(r.ubicados) || 0), 0);
     const totalPaletsTransito  = sumPalets(enTransit);
     const totalPaletsRecepcion = enRecep.reduce((s,r) => s + (Number(r.p_ubicar) || 0), 0);
     const nEnTransito = enTransit.length, nEnRecep = enRecep.length, nEnPrep = enPrep.length;
 
-    document.getElementById('kpiFacturas').textContent        = data.length;
-    document.getElementById('kpiPendientes').textContent      = totalPendientes;
-    document.getElementById('kpiHoy').textContent             = ubicadosHoy;
-    document.getElementById('kpiPalets').textContent          = totalPalets;
-    document.getElementById('kpiPaletsTransito').textContent  = totalPaletsTransito;
-    document.getElementById('kpiPaletsRecepcion').textContent = totalPaletsRecepcion;
-    document.getElementById('kpiHoySub').textContent          = 'Palés ubicados hoy';
+    setKpiText('kpiFacturas',        data.length);
+    setKpiText('kpiPendientes',      totalPendientes);
+    setKpiText('kpiHoy',             ubicadosHoy);
+    setKpiText('kpiPalets',          totalPalets);
+    setKpiText('kpiPaletsTransito',  totalPaletsTransito);
+    setKpiText('kpiPaletsRecepcion', totalPaletsRecepcion);
 
-    const pctPend = totalPalets > 0 ? Math.round((totalPendientes / totalPalets) * 100) : 0;
-    const avg     = nEnPrep > 0 ? (totalPalets / nEnPrep).toFixed(1) : '0';
+    // Pendientes se mide contra los palets en Reponer, no contra el total global:
+    // de lo contrario el porcentaje se diluye con lo que aún está en tránsito o recepción.
+    const pctPend = paletsEnPrep > 0 ? Math.round((totalPendientes / paletsEnPrep) * 100) : 0;
+    const avg     = data.length > 0 ? (totalPalets / data.length).toFixed(1) : '0';
 
-    document.getElementById('kpiExtraFacturas').innerHTML =
+    setKpiHtml('kpiExtraFacturas',
       `<span><span>🚚 En tránsito</span><b>${nEnTransito}</b></span>` +
       `<span><span>📦 Recepción</span><b>${nEnRecep}</b></span>` +
-      `<span><span>🔧 Reponer</span><b>${nEnPrep}</b></span>`;
+      `<span><span>🔧 Ubicar</span><b>${nEnPrep}</b></span>`);
 
-    document.getElementById('kpiExtraPendientes').innerHTML =
-      `<span><span>% sobre total palets</span><b>${pctPend}%</b></span>` +
-      `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`;
+    setKpiHtml('kpiExtraPendientes',
+      `<span><span>% sobre palets en ubicar</span><b>${pctPend}%</b></span>` +
+      `<span><span>Ya ubicados</span><b>${totalUbicados}</b></span>`);
 
     renderKpiExtraUbicados();
 
-    document.getElementById('kpiExtraPalets').innerHTML =
+    setKpiHtml('kpiExtraPalets',
       `<span><span>Media por factura</span><b>${avg}</b></span>` +
-      `<span><span>Facturas en reponer</span><b>${nEnPrep}</b></span>`;
+      `<span><span>En ubicar</span><b>${paletsEnPrep}</b></span>`);
 
-    document.getElementById('kpiExtraPaletsTransito').innerHTML =
-      `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`;
+    setKpiHtml('kpiExtraPaletsTransito',
+      `<span><span>Facturas en tránsito</span><b>${nEnTransito}</b></span>`);
 
-    document.getElementById('kpiExtraPaletsRecepcion').innerHTML =
-      `<span><span>Facturas en recepción</span><b>${nEnRecep}</b></span>`;
+    setKpiHtml('kpiExtraPaletsRecepcion',
+      `<span><span>Facturas en recepción</span><b>${nEnRecep}</b></span>`);
   }
 
   function render() { renderDesktop(); renderMobile(); updateKPIs(); }
 
+  // Un <td> por clave de columna. ctx trae los números ya derivados (total/ubic/pUb/pct/repo)
+  // para no recalcularlos por columna; devuelve '' para claves desconocidas (no debería pasar).
+  function tableCellHTML(key, r, i, ctx) {
+    switch (key) {
+      case 'fecha': return `<td><input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
+          onchange="upd(${i},'fecha',this.value)"></td>`;
+      case 'fecha_prevista': return `<td><input type="date" class="ci ci-fecha-prevista" value="${r.fecha_prevista||''}" data-orig="${r.fecha_prevista||''}" disabled
+          onchange="upd(${i},'fecha_prevista',this.value)"></td>`;
+      case 'dest': return `<td><input type="text" class="ci ci-dest" value="${esc(r.dest)}" data-orig="${esc(r.dest)}" disabled
+          oninput="upd(${i},'dest',this.value.toUpperCase());this.value=this.value.toUpperCase()"></td>`;
+      case 'factura': return `<td><input type="text" class="ci ci-fact" value="${esc(r.factura)}" data-orig="${esc(r.factura)}" disabled
+          oninput="upd(${i},'factura',this.value)"></td>`;
+      case 'palets': return `<td>
+          <div class="pw">
+            <input type="number" class="ci ci-palets" value="${ctx.total}" data-orig="${ctx.total}" min="0" disabled
+              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)">
+            <div class="pb-wrap"><div class="pb-bar" id="bar-${i}" style="width:${ctx.pct}%"></div></div>
+          </div>
+        </td>`;
+      case 'ubicados': return `<td><input type="number" class="ci ci-num ci-ubic" value="${ctx.ubic}" min="0" max="${ctx.total}"
+          ${ctx.repo?'':'disabled'}
+          onblur="editarReposicion(${i},'ubicados',this.value)"></td>`;
+      case 'p_ubicar': return `<td><input type="number" class="ci ci-num ci-pend" value="${ctx.pUb}" min="0" max="${ctx.total}"
+          ${ctx.repo?'':'disabled'}
+          onblur="editarReposicion(${i},'p_ubicar',this.value)"></td>`;
+      case 'calle': return `<td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
+          oninput="upd(${i},'calle',this.value)"></td>`;
+      case 'obs': return `<td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
+          oninput="upd(${i},'obs',this.value)"></td>`;
+      case 'estado': return `<td>
+          <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
+            ${estadoOptions(r.estado)}
+          </select>
+        </td>`;
+      default: return '';
+    }
+  }
+
   function renderDesktop() {
     const tbody = document.getElementById('tableBody');
-    if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Sin expediciones registradas</td></tr>'; return; }
+    const visibleCols = tableColCfg.order.filter(columnVisible);
+    if (!data.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="${visibleCols.length+1}">Sin expediciones registradas</td></tr>`; syncTableWidth(); return; }
     tbody.innerHTML = data.map((r,i) => {
       const pct   = Math.min(100, ((Number(r.palets)||0)/80)*100);
       const total = Number(r.palets)   || 0;
       const ubic  = Number(r.ubicados) || 0;
       const pUb   = Number(r.p_ubicar) || 0;
       const repo  = esReponer(r);   // Ubicados / P. por ubicar solo se editan en Reponer
-      return `<tr id="exp-row-${i}">
-        <td><input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
-          onchange="upd(${i},'fecha',this.value)"></td>
-        <td><input type="text" class="ci ci-dest" value="${esc(r.dest)}" data-orig="${esc(r.dest)}" disabled
-          oninput="upd(${i},'dest',this.value.toUpperCase());this.value=this.value.toUpperCase()"></td>
-        <td><input type="text" class="ci ci-fact" value="${esc(r.factura)}" data-orig="${esc(r.factura)}" disabled
-          oninput="upd(${i},'factura',this.value)"></td>
-        <td>
-          <div class="pw">
-            <input type="number" class="ci ci-palets" value="${total}" data-orig="${total}" min="0" disabled
-              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)">
-            <div class="pb-wrap"><div class="pb-bar" id="bar-${i}" style="width:${pct}%"></div></div>
-          </div>
-        </td>
-        <td><input type="number" class="ci ci-num ci-ubic" value="${ubic}" min="0" max="${total}"
-          ${repo?'':'disabled'}
-          onblur="editarReposicion(${i},'ubicados',this.value)"></td>
-        <td><input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
-          ${repo?'':'disabled'}
-          onblur="editarReposicion(${i},'p_ubicar',this.value)"></td>
-        <td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
-          oninput="upd(${i},'calle',this.value)"></td>
-        <td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
-          oninput="upd(${i},'obs',this.value)"></td>
-        <td>
-          <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
-            ${estadoOptions(r.estado)}
-          </select>
-        </td>
+      const ctx   = { total, ubic, pUb, pct, repo };
+      const cells = visibleCols.map(key => tableCellHTML(key, r, i, ctx)).join('');
+      return `<tr id="exp-row-${i}">${cells}
         <td style="display:flex;gap:4px;align-items:center;justify-content:center;">
           <button class="edit-btn" onclick="toggleEditRow(${i})" title="Editar">${ICON_PENCIL}</button>
           <button class="save-btn" onclick="saveRow(${i})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
@@ -896,53 +1615,74 @@
         </td>
       </tr>`;
     }).join('');
+    // renderTableHead() corre al arrancar, cuando #appContent aún está oculto y el
+    // contenedor mide 0: hay que recalcular el reparto ya con la tabla visible.
+    syncTableWidth();
+    restaurarEdiciones(rowEdits, 'exp-row-', ROW_EDIT_FIELDS);
   }
 
   function statusLabel(s) { const e = normEstado(s); return `${ESTADO_ICON[e]} ${ESTADO_TEXT[e]}`; }
   function statusColor(s) { return ESTADO_COLOR[normEstado(s)]; }
 
+  // Campos del m-grid (todo salvo dest/factura, que tienen su propia posición fija
+  // en la cabecera de la tarjeta — ver renderMobile). Misma lógica de ctx que tableCellHTML.
+  function mobileFieldHTML(key, r, i, ctx) {
+    switch (key) {
+      case 'fecha': return `<div class="m-field"><label>Fecha de Registro</label>
+          <input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
+            onchange="upd(${i},'fecha',this.value)"
+            style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>`;
+      case 'fecha_prevista': return `<div class="m-field"><label>Fecha Prevista</label>
+          <input type="date" class="ci ci-fecha-prevista" value="${r.fecha_prevista||''}" data-orig="${r.fecha_prevista||''}" disabled
+            onchange="upd(${i},'fecha_prevista',this.value)"
+            style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>`;
+      case 'palets': return `<div class="m-field"><label>Total Palets</label>
+          <input type="number" class="ci ci-palets" value="${ctx.total}" data-orig="${ctx.total}" min="0" disabled
+            oninput="upd(${i},'palets',this.value);updBar(${i},this.value)" style="max-width:80px;"></div>`;
+      case 'ubicados': return `<div class="m-field"><label>Ubicados</label>
+          <input type="number" class="ci ci-num ci-ubic" value="${ctx.ubic}" min="0" max="${ctx.total}"
+            ${ctx.repo?'':'disabled'}
+            onblur="editarReposicion(${i},'ubicados',this.value)" style="max-width:80px;"></div>`;
+      case 'p_ubicar': return `<div class="m-field"><label>P. por ubicar</label>
+          <input type="number" class="ci ci-num ci-pend" value="${ctx.pUb}" min="0" max="${ctx.total}"
+            ${ctx.repo?'':'disabled'}
+            onblur="editarReposicion(${i},'p_ubicar',this.value)" style="max-width:80px;"></div>`;
+      case 'calle': return `<div class="m-field"><label>Calle</label>
+          <input type="text" class="ci ci-calle" value="${esc(r.calle)}" placeholder="—" data-orig="${esc(r.calle)}" disabled
+            oninput="upd(${i},'calle',this.value)" style="max-width:80px;"></div>`;
+      case 'obs': return `<div class="m-field" style="grid-column:1/-1"><label>Observaciones</label>
+          <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
+            oninput="upd(${i},'obs',this.value)"></div>`;
+      case 'estado': return `<div class="m-field" style="grid-column:1/-1"><label>Estado</label>
+          <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
+            ${estadoOptions(r.estado)}
+          </select></div>`;
+      default: return '';
+    }
+  }
+
   function renderMobile() {
     const mc = document.getElementById('mobileCards');
     if (!data.length) { mc.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-style:italic;">Sin expediciones</div>'; return; }
+    const visibleCols  = tableColCfg.order.filter(columnVisible);
+    const showDest     = visibleCols.includes('dest');
+    const showFactura  = visibleCols.includes('factura');
+    const gridKeys     = visibleCols.filter(k => k !== 'dest' && k !== 'factura');
     mc.innerHTML = data.map((r,i) => {
       const total = Number(r.palets)   || 0;
       const ubic  = Number(r.ubicados) || 0;
       const pUb   = Number(r.p_ubicar) || 0;
       const repo  = esReponer(r);
+      const ctx   = { total, ubic, pUb, repo };
+      const fieldsHtml = gridKeys.map(key => mobileFieldHTML(key, r, i, ctx)).join('');
       return `
       <div class="m-card" id="exp-mrow-${i}">
         <div class="m-card-head">
-          <span class="m-dest">${esc(r.dest)||'—'}</span>
-          <span style="font-size:.7rem;color:${statusColor(r.estado)};font-weight:600;">${statusLabel(r.estado)}</span>
+          ${showDest ? `<span class="m-dest">${esc(r.dest)||'—'}</span>` : '<span></span>'}
+          ${gridKeys.includes('estado') ? `<span style="font-size:.7rem;color:${statusColor(r.estado)};font-weight:600;">${statusLabel(r.estado)}</span>` : ''}
         </div>
-        <div class="m-factura" style="margin-bottom:10px;">📄 ${esc(r.factura)||'—'}</div>
-        <div class="m-grid">
-          <div class="m-field"><label>Fecha prevista</label>
-            <input type="date" class="ci ci-fecha" value="${r.fecha||''}" data-orig="${r.fecha||''}" disabled
-              onchange="upd(${i},'fecha',this.value)"
-              style="font-size:.74rem;color:var(--muted);font-family:'JetBrains Mono',monospace;color-scheme:dark;"></div>
-          <div class="m-field"><label>Total Palets</label>
-            <input type="number" class="ci ci-palets" value="${total}" data-orig="${total}" min="0" disabled
-              oninput="upd(${i},'palets',this.value);updBar(${i},this.value)" style="max-width:80px;"></div>
-          <div class="m-field"><label>Ubicados</label>
-            <input type="number" class="ci ci-num ci-ubic" value="${ubic}" min="0" max="${total}"
-              ${repo?'':'disabled'}
-              onblur="editarReposicion(${i},'ubicados',this.value)" style="max-width:80px;"></div>
-          <div class="m-field"><label>P. por ubicar</label>
-            <input type="number" class="ci ci-num" value="${pUb}" min="0" max="${total}"
-              ${repo?'':'disabled'}
-              onblur="editarReposicion(${i},'p_ubicar',this.value)" style="max-width:80px;"></div>
-          <div class="m-field"><label>Calle</label>
-            <input type="text" class="ci ci-calle" value="${esc(r.calle)}" placeholder="—" data-orig="${esc(r.calle)}" disabled
-              oninput="upd(${i},'calle',this.value)" style="max-width:80px;"></div>
-          <div class="m-field" style="grid-column:1/-1"><label>Observaciones</label>
-            <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
-              oninput="upd(${i},'obs',this.value)"></div>
-          <div class="m-field" style="grid-column:1/-1"><label>Estado</label>
-            <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
-              ${estadoOptions(r.estado)}
-            </select></div>
-        </div>
+        ${showFactura ? `<div class="m-factura" style="margin-bottom:10px;">📄 ${esc(r.factura)||'—'}</div>` : ''}
+        <div class="m-grid">${fieldsHtml}</div>
         <div class="m-actions">
           <button class="edit-btn" onclick="toggleEditMRow(${i})" title="Editar">${ICON_PENCIL}</button>
           <button class="save-btn" onclick="saveMRow(${i})" title="Guardar" style="display:none;">${ICON_SAVE}</button>
@@ -950,6 +1690,7 @@
         </div>
       </div>`;
     }).join('');
+    restaurarEdiciones(mrowEdits, 'exp-mrow-', MROW_EDIT_FIELDS);
   }
 
   function upd(i, key, val) {
@@ -963,92 +1704,126 @@
     if (error) console.error('Error al guardar:', key, error.message);
   }
 
-  // Guarda los campos del lápiz y rehace la coherencia ubicados + p_ubicar = palets
+  // Guarda los campos del lápiz y rehace la coherencia ubicados + p_ubicar = palets.
+  // vals.palets puede faltar si la columna Total Palets está oculta desde Configuración
+  // (no hay <input> del que leerlo); en ese caso se conserva el valor actual sin tocarlo.
   async function guardarFila(i, vals) {
-    const total   = Math.max(0, Number(vals.palets) || 0);
+    const total   = Math.max(0, Number(vals.palets !== undefined ? vals.palets : data[i].palets) || 0);
     const ubic    = Math.min(Math.max(0, Number(data[i].ubicados) || 0), total);
     const payload = { ...vals, palets: total, ubicados: ubic, p_ubicar: total - ubic };
     for (const k of ['fecha','dest','factura','calle','obs']) {
       if (k in payload && payload[k] === '') payload[k] = null;
     }
+    // Fecha Prevista nunca queda vacía: si no se indicó, se calcula a 8 días de la Fecha de Registro
+    if ('fecha_prevista' in payload && !payload.fecha_prevista) payload.fecha_prevista = calcFechaPrevista(payload.fecha);
     const { error } = await sb.from('expediciones').update(payload).eq('id', data[i].id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
     Object.assign(data[i], payload);
+    // Guardado con éxito: la edición terminó, la fila vuelve a salir bloqueada.
+    // Si falla, no se limpia y la fila sigue desbloqueada para reintentar.
+    rowEdits.delete(data[i].id);
+    mrowEdits.delete(data[i].id);
     render();
   }
 
-  function toggleEditRow(i) {
-    const row    = document.getElementById('exp-row-' + i);
-    const fecha  = row.querySelector('.ci-fecha');
-    const dest   = row.querySelector('.ci-dest');
-    const fact   = row.querySelector('.ci-fact');
-    const palets = row.querySelector('.ci-palets');
-    const calle  = row.querySelector('.ci-calle');
-    const obs    = row.querySelector('.ci-obs');
+  // Claves del lápiz y su clase .ci-* asociada. Una columna oculta desde Configuración
+  // no tiene <input> en el DOM — toggleEditRowGeneric() filtra los que faltan, y si
+  // TODOS faltan (caso límite: se ocultaron todas las columnas editables) no hace nada.
+  const ROW_EDIT_FIELDS  = [
+    { cls:'ci-fecha',          key:'fecha' },
+    { cls:'ci-fecha-prevista', key:'fecha_prevista' },
+    { cls:'ci-dest',           key:'dest' },
+    { cls:'ci-fact',           key:'factura' },
+    { cls:'ci-palets',         key:'palets' },
+    { cls:'ci-calle',          key:'calle' },
+    { cls:'ci-obs',            key:'obs' },
+  ];
+  // La tarjeta móvil nunca ha editado dest/factura por su lápiz (están fuera del m-grid)
+  const MROW_EDIT_FIELDS = ROW_EDIT_FIELDS.filter(d => d.key !== 'dest' && d.key !== 'factura');
+
+  // Filas actualmente desbloqueadas con el lápiz, con sus valores ORIGINALES (los de
+  // antes de empezar a editar). Se guardan aquí y no solo en el data-orig del <input>
+  // porque reordenar/ocultar una columna reconstruye <tbody> y destruye esos inputs:
+  // sin esto la fila se volvía a bloquear sola y el data-orig pasaba a valer el texto
+  // sin guardar, dejando el valor real irrecuperable y la pantalla mostrando un cambio
+  // que la base de datos no tiene. Van indexadas por id de expedición (no por índice)
+  // para que borrar otra fila no las desplace.
+  const rowEdits  = new Map();   // escritorio
+  const mrowEdits = new Map();   // móvil
+
+  function aplicarEstadoEdicion(row, defs, origs) {
+    defs.forEach(d => {
+      const el = row.querySelector('.' + d.cls);
+      if (!el) return;
+      el.disabled = false;
+      if (d.key in origs) el.dataset.orig = origs[d.key];
+    });
     const editBtn = row.querySelector('.edit-btn');
     const saveBtn = row.querySelector('.save-btn');
-    const entering = fecha.disabled;
+    if (editBtn) editBtn.title = 'Cancelar edición';
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  }
+
+  // Se llama al final de renderDesktop()/renderMobile() para que las filas que
+  // estaban en edición sigan desbloqueadas tras reconstruir la tabla.
+  function restaurarEdiciones(store, prefix, defs) {
+    store.forEach((origs, id) => {
+      const i = data.findIndex(r => r.id === id);
+      if (i < 0) { store.delete(id); return; }      // la fila ya no existe (se borró)
+      const row = document.getElementById(prefix + i);
+      if (row) aplicarEstadoEdicion(row, defs, origs);
+    });
+  }
+
+  function toggleEditRowGeneric(row, defs, i, store) {
+    const present = defs.map(d => ({ ...d, el: row.querySelector('.' + d.cls) })).filter(d => d.el);
+    if (!present.length) return;
+    const editBtn = row.querySelector('.edit-btn');
+    const saveBtn = row.querySelector('.save-btn');
+    const id = data[i].id;
+    const entering = present[0].el.disabled;
     if (entering) {
-      [fecha, dest, fact, palets, calle, obs].forEach(f => f.disabled = false);
+      const origs = {};
+      present.forEach(d => { origs[d.key] = d.el.dataset.orig; d.el.disabled = false; });
+      store.set(id, origs);
       editBtn.title = 'Cancelar edición';
       saveBtn.style.display = 'inline-flex';
-      dest.focus();
+      present[0].el.focus();
     } else {
-      [fecha, dest, fact, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
-      palets.value = palets.dataset.orig;
-      palets.disabled = true;
-      data[i].fecha = fecha.value; data[i].dest = dest.value; data[i].factura = fact.value;
-      data[i].palets = Number(palets.value) || 0; data[i].calle = calle.value; data[i].obs = obs.value;
+      // Cancelar: se restaura desde los originales guardados al entrar en edición,
+      // que sobreviven aunque la fila se haya reconstruido por el medio.
+      const origs = store.get(id) || {};
+      present.forEach(d => {
+        const orig = (d.key in origs) ? origs[d.key] : d.el.dataset.orig;
+        d.el.value = orig;
+        d.el.dataset.orig = orig;
+        d.el.disabled = true;
+        data[i][d.key] = d.key === 'palets' ? (Number(orig) || 0) : orig;
+      });
+      store.delete(id);
       editBtn.title = 'Editar';
       saveBtn.style.display = 'none';
+      if ('palets' in origs) updBar(i, data[i].palets);
     }
+  }
+
+  function toggleEditRow(i)  { toggleEditRowGeneric(document.getElementById('exp-row-' + i),  ROW_EDIT_FIELDS,  i, rowEdits); }
+  function toggleEditMRow(i) { toggleEditRowGeneric(document.getElementById('exp-mrow-' + i), MROW_EDIT_FIELDS, i, mrowEdits); }
+
+  function collectRowVals(row, defs) {
+    const vals = {};
+    defs.forEach(d => { const el = row.querySelector('.' + d.cls); if (el) vals[d.key] = el.value; });
+    return vals;
   }
 
   async function saveRow(i) {
     const row = document.getElementById('exp-row-' + i);
-    await guardarFila(i, {
-      fecha:   row.querySelector('.ci-fecha').value,
-      dest:    row.querySelector('.ci-dest').value,
-      factura: row.querySelector('.ci-fact').value,
-      palets:  row.querySelector('.ci-palets').value,
-      calle:   row.querySelector('.ci-calle').value,
-      obs:     row.querySelector('.ci-obs').value,
-    });
-  }
-
-  function toggleEditMRow(i) {
-    const row    = document.getElementById('exp-mrow-' + i);
-    const fecha  = row.querySelector('.ci-fecha');
-    const palets = row.querySelector('.ci-palets');
-    const calle  = row.querySelector('.ci-calle');
-    const obs    = row.querySelector('.ci-obs');
-    const editBtn = row.querySelector('.edit-btn');
-    const saveBtn = row.querySelector('.save-btn');
-    const entering = fecha.disabled;
-    if (entering) {
-      [fecha, palets, calle, obs].forEach(f => f.disabled = false);
-      editBtn.title = 'Cancelar edición';
-      saveBtn.style.display = 'inline-flex';
-      fecha.focus();
-    } else {
-      [fecha, calle, obs].forEach(f => { f.value = f.dataset.orig; f.disabled = true; });
-      palets.value = palets.dataset.orig;
-      palets.disabled = true;
-      data[i].fecha = fecha.value; data[i].palets = Number(palets.value) || 0;
-      data[i].calle = calle.value; data[i].obs = obs.value;
-      editBtn.title = 'Editar';
-      saveBtn.style.display = 'none';
-    }
+    await guardarFila(i, collectRowVals(row, ROW_EDIT_FIELDS));
   }
 
   async function saveMRow(i) {
     const row = document.getElementById('exp-mrow-' + i);
-    await guardarFila(i, {
-      fecha:  row.querySelector('.ci-fecha').value,
-      palets: row.querySelector('.ci-palets').value,
-      calle:  row.querySelector('.ci-calle').value,
-      obs:    row.querySelector('.ci-obs').value,
-    });
+    await guardarFila(i, collectRowVals(row, MROW_EDIT_FIELDS));
   }
 
   async function handleEstadoChange(i, val, selectEl) {
@@ -1112,7 +1887,7 @@
     await sb.from('historial_ubicados_dia')
       .upsert({ fecha: todayISO, palets_ubicados: newCount }, { onConflict: 'fecha' });
     ubicadosHoy = newCount;
-    document.getElementById('kpiHoy').textContent = newCount;
+    setKpiText('kpiHoy', newCount);
     histUbicLoaded = false;
   }
 
@@ -1130,6 +1905,7 @@
   // ===== MODAL =====
   function openModal() {
     document.getElementById('fFecha').value   = todayISO;
+    document.getElementById('fFechaPrevista').value = '';
     document.getElementById('fDest').value    = '';
     document.getElementById('fFactura').value = '';
     document.getElementById('fPalets').value  = '';
@@ -1146,8 +1922,12 @@
     const total  = Math.max(0, Number(document.getElementById('fPalets').value) || 0);
     const rawPUb = document.getElementById('fPUbicar').value;
     const pUb    = rawPUb === '' ? total : Math.max(0, Math.min(total, Number(rawPUb) || 0));
+    const fecha = document.getElementById('fFecha').value || null;
+    // Fecha Prevista nunca queda vacía: si no se indica, se calcula a 8 días de la Fecha de Registro
+    const fechaPrevista = document.getElementById('fFechaPrevista').value || calcFechaPrevista(fecha);
     const row = {
-      fecha:    document.getElementById('fFecha').value   || null,
+      fecha:          fecha,
+      fecha_prevista: fechaPrevista,
       dest:     document.getElementById('fDest').value.trim().toUpperCase(),
       factura:  document.getElementById('fFactura').value.trim(),
       palets:   total,
@@ -1298,17 +2078,22 @@
       const hora  = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       const exps  = Array.isArray(c.expediciones) ? c.expediciones : [];
       const expCards = exps.length
-        ? exps.map(e => {
-            const st = normEstado(e.estado);
-            const pend = Number(e.p_ubicar) || 0;
-            const ubic = Number(e.ubicados) || 0;
-            return `<div class="exp-row">
+        ? exps.map((e, idx) => {
+            const st   = normEstado(e.estado);
+            const pal  = Number(e.palets)    || 0;
+            const ubic = Number(e.ubicados)  || 0;
+            const pend = Number(e.p_ubicar)  || 0;
+            return `<div class="exp-row" id="exp-${c.id}-${idx}">
               <div class="exp-row-main">
                 <span class="exp-dest">${esc(e.dest) || '—'}</span>
-                <span class="exp-fact">${esc(e.factura) || '—'}</span>
+                <input class="ci ci-exp-fact" type="text" placeholder="N° factura" value="${esc(e.factura)}" data-orig="${esc(e.factura)}" disabled>
               </div>
               <div class="exp-row-sub">
-                <span class="exp-meta"><b>${e.palets || 0}</b> palets · <b style="color:var(--accent)">${ubic}</b> ubic.${pend ? ` · <b style="color:var(--warn)">${pend}</b> pend.` : ''}</span>
+                <span class="exp-meta">
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-pal" type="number" min="0" value="${pal}" data-orig="${pal}" disabled> palets</span>
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-ubic" type="number" min="0" value="${ubic}" data-orig="${ubic}" disabled> ubic.</span>
+                  <span class="exp-field"><input class="ci ci-exp-num ci-exp-pend" type="number" min="0" value="${pend}" data-orig="${pend}" disabled> pend.</span>
+                </span>
                 <span class="estado-badge estado-${st}">${statusLabel(st)}</span>
               </div>
             </div>`;
@@ -1320,9 +2105,9 @@
             <div>
               <div class="cierre-date">${fecha} · ${hora}</div>
               <div class="cierre-stats">
-                <div class="cierre-stat"><b>${c.total_facturas}</b> facturas</div>
-                <div class="cierre-stat"><b>${c.total_palets}</b> palets</div>
-                <div class="cierre-stat" style="color:var(--warn)"><b>${c.total_pendientes}</b> pendientes</div>
+                <div class="cierre-stat"><b id="hc-fact-${c.id}">${c.total_facturas}</b> facturas</div>
+                <div class="cierre-stat"><b id="hc-pal-${c.id}">${c.total_palets}</b> palets</div>
+                <div class="cierre-stat" style="color:var(--warn)"><b id="hc-pend-${c.id}">${c.total_pendientes}</b> pendientes</div>
               </div>
             </div>
             <span class="cierre-chevron">▼</span>
@@ -1330,8 +2115,8 @@
           <div class="cierre-detail">
             <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.04);">
               <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(c.nota)}" data-orig="${esc(c.nota)}" style="flex:1;" disabled>
-              <button class="edit-btn" onclick="event.stopPropagation();toggleEditHistCierre('${c.id}')" title="Editar">${ICON_PENCIL}</button>
-              <button class="save-btn" onclick="event.stopPropagation();saveHistCierre('${c.id}')" title="Guardar" style="display:none;">${ICON_SAVE}</button>
+              <button class="edit-btn" onclick="event.stopPropagation();toggleEditCierre('${c.id}')" title="Editar todo">${ICON_PENCIL}</button>
+              <button class="save-btn" onclick="event.stopPropagation();saveCierre('${c.id}')" title="Guardar todo" style="display:none;">${ICON_SAVE}</button>
               <button class="del-btn" onclick="event.stopPropagation();deleteHistorialItem('${c.id}')" title="Eliminar">✕</button>
             </div>
             ${expCards}
@@ -1346,37 +2131,88 @@
     document.getElementById('cierre-' + id)?.classList.toggle('expanded');
   }
 
-  function toggleEditHistCierre(id) {
-    const card    = document.getElementById('cierre-' + id);
-    const nota    = card.querySelector('.ci-nota');
-    const editBtn = card.querySelector('.edit-btn');
-    const saveBtn = card.querySelector('.save-btn');
-    const entering = nota.disabled;
-    if (entering) {
-      nota.disabled = false;
-      editBtn.title = 'Cancelar edición';
-      saveBtn.style.display = 'inline-flex';
-      nota.focus();
-    } else {
-      nota.value = nota.dataset.orig;
-      nota.disabled = true;
-      editBtn.title = 'Editar';
-      saveBtn.style.display = 'none';
-    }
+  // Un único lápiz/disquete por cierre edita todo a la vez: la nota + factura/palets/
+  // ubicados/pendientes de cada expedición que contiene. Todo se guarda en una sola
+  // llamada (nota + el array `expediciones` completo reescrito).
+  const CIERRE_EDIT_FIELDS = '.ci-nota, .ci-exp-fact, .ci-exp-pal, .ci-exp-ubic, .ci-exp-pend';
+
+  function toggleEditCierre(id) {
+    const card     = document.getElementById('cierre-' + id);
+    const fields   = card.querySelectorAll(CIERRE_EDIT_FIELDS);
+    const editBtn  = card.querySelector('.edit-btn');
+    const saveBtn  = card.querySelector('.save-btn');
+    const entering = fields[0].disabled;
+    fields.forEach(f => {
+      if (!entering) f.value = f.dataset.orig;   // cancelar: restaurar todo lo original
+      f.disabled = !entering;
+    });
+    editBtn.title = entering ? 'Cancelar edición' : 'Editar todo';
+    saveBtn.style.display = entering ? 'inline-flex' : 'none';
+    if (entering) fields[0].focus();
   }
 
-  async function saveHistCierre(id) {
-    const card    = document.getElementById('cierre-' + id);
+  async function saveCierre(id) {
+    const card   = document.getElementById('cierre-' + id);
+    const cierre = histAllCierres.find(c => c.id === id);
+    if (!cierre) return;
+
     const nota    = card.querySelector('.ci-nota');
     const notaVal = nota.value === '' ? null : nota.value;
-    const { error } = await sb.from('historial_cierres').update({ nota: notaVal }).eq('id', id);
+
+    const entero = v => Math.max(0, Math.trunc(Number(v) || 0));
+    const rows = card.querySelectorAll('.exp-row');
+    const exps = Array.isArray(cierre.expediciones) ? [...cierre.expediciones] : [];
+    rows.forEach((row, idx) => {
+      if (!exps[idx]) return;
+      const fact  = row.querySelector('.ci-exp-fact');
+      const pal   = row.querySelector('.ci-exp-pal');
+      const ubic  = row.querySelector('.ci-exp-ubic');
+      const pend  = row.querySelector('.ci-exp-pend');
+      const nPal  = entero(pal.value);
+      const nUbic = Math.min(entero(ubic.value), nPal);
+      const nPend = Math.min(entero(pend.value), nPal);
+      exps[idx] = { ...exps[idx], factura: fact.value.trim() || null, palets: nPal, ubicados: nUbic, p_ubicar: nPend };
+    });
+
+    // La cabecera (N facturas · N palets · N pendientes) es un resumen de `expediciones`;
+    // se recalcula desde los datos recién editados para que nunca quede desactualizada.
+    const nTotalFacturas   = exps.length;
+    const nTotalPalets     = exps.reduce((s, e) => s + (Number(e.palets)   || 0), 0);
+    const nTotalPendientes = exps.reduce((s, e) => s + (Number(e.p_ubicar) || 0), 0);
+
+    const payload = {
+      nota: notaVal, expediciones: exps,
+      total_facturas: nTotalFacturas, total_palets: nTotalPalets, total_pendientes: nTotalPendientes,
+    };
+    const { error } = await sb.from('historial_cierres').update(payload).eq('id', id);
     if (error) { alert('Error al guardar: ' + error.message); return; }
-    nota.dataset.orig = notaVal || '';
-    nota.disabled = true;
-    card.querySelector('.edit-btn').title = 'Editar';
+
+    cierre.nota = notaVal;
+    cierre.expediciones = exps;
+    cierre.total_facturas   = nTotalFacturas;
+    cierre.total_palets     = nTotalPalets;
+    cierre.total_pendientes = nTotalPendientes;
+
+    document.getElementById('hc-fact-' + id).textContent = nTotalFacturas;
+    document.getElementById('hc-pal-'  + id).textContent = nTotalPalets;
+    document.getElementById('hc-pend-' + id).textContent = nTotalPendientes;
+
+    nota.value = notaVal || ''; nota.dataset.orig = notaVal || '';
+    rows.forEach((row, idx) => {
+      const e = exps[idx];
+      if (!e) return;
+      const fact = row.querySelector('.ci-exp-fact');
+      const pal  = row.querySelector('.ci-exp-pal');
+      const ubic = row.querySelector('.ci-exp-ubic');
+      const pend = row.querySelector('.ci-exp-pend');
+      fact.value = e.factura || ''; fact.dataset.orig = e.factura || '';
+      pal.value  = e.palets;        pal.dataset.orig  = e.palets;
+      ubic.value = e.ubicados;      ubic.dataset.orig = e.ubicados;
+      pend.value = e.p_ubicar;      pend.dataset.orig = e.p_ubicar;
+    });
+    card.querySelectorAll(CIERRE_EDIT_FIELDS).forEach(f => f.disabled = true);
+    card.querySelector('.edit-btn').title = 'Editar todo';
     card.querySelector('.save-btn').style.display = 'none';
-    const cached = histAllCierres.find(c => c.id === id);
-    if (cached) cached.nota = notaVal;
   }
 
   async function deleteHistorialItem(id) {
@@ -1441,7 +2277,7 @@
             <div style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px;">
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0;">Palés</span>
-                <input class="ci ci-palets" type="number" min="0" value="${r.palets_ubicados}" data-orig="${r.palets_ubicados}" disabled style="width:72px;">
+                <input class="ci ci-diapalets" type="number" min="0" value="${r.palets_ubicados}" data-orig="${r.palets_ubicados}" disabled style="width:72px;">
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <input class="ci ci-nota" type="text" placeholder="Nota…" value="${esc(r.nota)}" data-orig="${esc(r.nota)}" style="flex:1;" disabled>
@@ -1463,7 +2299,7 @@
 
   function toggleEditHistUbic(id) {
     const card   = document.getElementById('histUbic-' + id);
-    const palets = card.querySelector('.ci-palets');
+    const palets = card.querySelector('.ci-diapalets');
     const nota   = card.querySelector('.ci-nota');
     const editBtn = card.querySelector('.edit-btn');
     const saveBtn = card.querySelector('.save-btn');
@@ -1486,7 +2322,7 @@
 
   async function saveHistUbic(id, fecha) {
     const card   = document.getElementById('histUbic-' + id);
-    const palets = card.querySelector('.ci-palets');
+    const palets = card.querySelector('.ci-diapalets');
     const nota   = card.querySelector('.ci-nota');
     const paletsVal = Number(palets.value) || 0;
     const notaVal   = nota.value === '' ? null : nota.value;
@@ -1506,7 +2342,7 @@
     if (fecha === todayISO) {
       ubicadosHoy = paletsVal;
       notaHoy = notaVal || '';
-      document.getElementById('kpiHoy').textContent = ubicadosHoy;
+      setKpiText('kpiHoy', ubicadosHoy);
       renderKpiExtraUbicados();
     }
   }
@@ -1520,7 +2356,7 @@
     if (fecha === todayISO) {
       ubicadosHoy = 0;
       notaHoy = '';
-      document.getElementById('kpiHoy').textContent = 0;
+      setKpiText('kpiHoy', 0);
       renderKpiExtraUbicados();
     }
   }
@@ -1548,6 +2384,7 @@
 
     ws.columns = [
       { header: 'Fecha Registro/Facturas', key: 'fecha' },
+      { header: 'Fecha Prevista',          key: 'fecha_prevista' },
       { header: 'Destinatario',            key: 'dest' },
       { header: 'Factura',                 key: 'factura' },
       { header: 'Total Palets',            key: 'palets' },
@@ -1558,7 +2395,7 @@
     ];
 
     rows.forEach(r => ws.addRow({
-      fecha: r.fecha, dest: r.dest, factura: r.factura,
+      fecha: r.fecha, fecha_prevista: r.fecha_prevista, dest: r.dest, factura: r.factura,
       palets: Number(r.palets) || 0,
       ubicados: Number(r.ubicados) || 0,
       p_ubicar: Number(r.p_ubicar) || 0,
@@ -1588,7 +2425,7 @@
       col.width = Math.min(Math.max(maxLen + 2, 10), 50);
     });
 
-    ws.autoFilter = 'A1:H1';
+    ws.autoFilter = 'A1:I1';
     ws.views = [{ state: 'frozen', ySplit: 1 }];
 
     const buffer = await wb.xlsx.writeBuffer();
