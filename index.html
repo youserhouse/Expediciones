@@ -1584,8 +1584,8 @@
           onblur="editarReposicion(${i},'p_ubicar',this.value)"></td>`;
       case 'calle': return `<td><input type="text" class="ci ci-calle" style="max-width:72px" value="${esc(r.calle)}" data-orig="${esc(r.calle)}" disabled
           oninput="upd(${i},'calle',this.value)"></td>`;
-      case 'obs': return `<td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
-          oninput="upd(${i},'obs',this.value)"></td>`;
+      case 'obs': return `<td><input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" title="${esc(r.obs)}" disabled
+          oninput="upd(${i},'obs',this.value);this.title=this.value"></td>`;
       case 'estado': return `<td>
           <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
             ${estadoOptions(r.estado)}
@@ -1651,8 +1651,8 @@
           <input type="text" class="ci ci-calle" value="${esc(r.calle)}" placeholder="—" data-orig="${esc(r.calle)}" disabled
             oninput="upd(${i},'calle',this.value)" style="max-width:80px;"></div>`;
       case 'obs': return `<div class="m-field" style="grid-column:1/-1"><label>Observaciones</label>
-          <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" disabled
-            oninput="upd(${i},'obs',this.value)"></div>`;
+          <input type="text" class="ci ci-obs" value="${esc(r.obs)}" placeholder="—" data-orig="${esc(r.obs)}" title="${esc(r.obs)}" disabled
+            oninput="upd(${i},'obs',this.value);this.title=this.value"></div>`;
       case 'estado': return `<div class="m-field" style="grid-column:1/-1"><label>Estado</label>
           <select class="ci" data-v="${normEstado(r.estado)}" onchange="handleEstadoChange(${i},this.value,this)">
             ${estadoOptions(r.estado)}
@@ -1798,6 +1798,7 @@
         d.el.value = orig;
         d.el.dataset.orig = orig;
         d.el.disabled = true;
+        if (d.key === 'obs') d.el.title = orig;
         data[i][d.key] = d.key === 'palets' ? (Number(orig) || 0) : orig;
       });
       store.delete(id);
