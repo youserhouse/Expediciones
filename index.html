@@ -402,6 +402,27 @@
   .exp-meta { font-size: .68rem; color: var(--muted); display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
   .exp-meta b { color: var(--text); font-weight: 600; }
   .exp-field { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
+
+  /* ===== Desglose por factura de los palés ubicados en un día ===== */
+  .ubic-desglose { display: flex; flex-direction: column; gap: 2px; }
+  .ubic-dtitle {
+    font-size: .6rem; color: var(--muted); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 2px;
+  }
+  .ubic-dline {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .72rem;
+  }
+  .ubic-dline:last-child { border-bottom: none; }
+  .ubic-dfact {
+    font-family: 'JetBrains Mono', monospace; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ubic-ddest { color: var(--muted); font-family: 'Inter', sans-serif; margin-left: 6px; }
+  .ubic-dnum { font-weight: 700; color: var(--warn); flex-shrink: 0; }
+  .ubic-dline-resto .ubic-dfact,
+  .ubic-dline-resto .ubic-dnum { color: var(--muted); font-style: italic; font-weight: 600; }
+
   .estado-badge { font-size: .62rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; letter-spacing: .5px; }
   .estado-ok             { background: rgba(0,229,160,.12); color: var(--accent); }
   .estado-tarde          { background: rgba(255,77,109,.12); color: var(--danger); }
@@ -813,6 +834,7 @@
   let data = [];
   let ubicadosHoy = 0;
   let notaHoy = '';
+  let detalleHoy = [];   // [{factura, dest, palets}] — qué factura aportó cada palé de hoy
   let histLoaded = false;
   let histUbicLoaded = false;
   let histFilter = 'all';
@@ -1461,15 +1483,67 @@
 
   async function loadUbicadosHoy() {
     const { data: row } = await sb
-      .from('historial_ubicados_dia').select('palets_ubicados, nota').eq('fecha', todayISO).single();
+      .from('historial_ubicados_dia').select('palets_ubicados, nota, detalle').eq('fecha', todayISO).single();
     ubicadosHoy = row?.palets_ubicados || 0;
     notaHoy = row?.nota || '';
+    detalleHoy = Array.isArray(row?.detalle) ? row.detalle : [];
   }
 
   function renderKpiExtraUbicados() {
-    setKpiHtml('kpiExtraUbicados', notaHoy
+    // Desglose por factura (las 4 primeras, para no desbordar la tarjeta) + la nota del día
+    const lineas = desgloseLineas(detalleHoy, ubicadosHoy);
+    const visibles = lineas.slice(0, 4);
+    const ocultas  = lineas.length - visibles.length;
+    let html = visibles.map(l =>
+      `<span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.factura)}</span><b>${l.palets}</b></span>`
+    ).join('');
+    if (ocultas > 0) html += `<span style="opacity:.6;">+${ocultas} factura${ocultas === 1 ? '' : 's'} más</span>`;
+    html += notaHoy
       ? `<div style="font-style:italic;line-height:1.4;">"${esc(notaHoy)}"</div>`
-      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`);
+      : `<div style="font-style:italic;opacity:.55;">Sin nota para hoy</div>`;
+    setKpiHtml('kpiExtraUbicados', html);
+  }
+
+  // ===== DESGLOSE POR FACTURA DE LOS UBICADOS DE UN DÍA =====
+  // `detalle` acumula una línea por factura; su suma puede no llegar al total del día
+  // (registros anteriores a esta función, o ediciones manuales del total): esa
+  // diferencia se muestra siempre como una línea "Sin asignar".
+  function detalleKey(factura, dest) {
+    return `${(factura || '').trim().toLowerCase()}|${(dest || '').trim().toLowerCase()}`;
+  }
+
+  // Suma `delta` palets a la línea de esa factura. Devuelve un array nuevo.
+  function mergeDetalle(detalle, delta, info) {
+    const arr = (Array.isArray(detalle) ? detalle : []).map(d => ({ ...d }));
+    if (!delta || !info) return arr;
+    const factura = (info.factura || '').trim();
+    const dest    = (info.dest || '').trim();
+    const idx = arr.findIndex(d => detalleKey(d.factura, d.dest) === detalleKey(factura, dest));
+    if (idx === -1) {
+      if (delta > 0) arr.push({ factura, dest, palets: delta });
+      return arr;
+    }
+    arr[idx].palets = (Number(arr[idx].palets) || 0) + delta;
+    if (arr[idx].palets <= 0) arr.splice(idx, 1);   // se deshizo todo lo ubicado de esa factura
+    return arr;
+  }
+
+  function desgloseLineas(detalle, total) {
+    const arr = (Array.isArray(detalle) ? detalle : [])
+      .map(d => ({ factura: d.factura || '(sin factura)', dest: d.dest || '', palets: Number(d.palets) || 0 }))
+      .filter(d => d.palets !== 0);
+    const resto = (Number(total) || 0) - arr.reduce((s, d) => s + d.palets, 0);
+    if (resto !== 0 || !arr.length) arr.push({ factura: 'Sin asignar', dest: '', palets: resto, resto: true });
+    return arr;
+  }
+
+  function desgloseUbicHTML(detalle, total) {
+    const lineas = desgloseLineas(detalle, total).map(l => `
+      <div class="ubic-dline${l.resto ? ' ubic-dline-resto' : ''}">
+        <span class="ubic-dfact">${esc(l.factura)}${l.dest ? `<span class="ubic-ddest">${esc(l.dest)}</span>` : ''}</span>
+        <span class="ubic-dnum">${l.palets}</span>
+      </div>`).join('');
+    return `<div class="ubic-dtitle">Desglose por factura</div><div class="ubic-desglose">${lineas}</div>`;
   }
 
   // ===== ESTADOS =====
@@ -1851,7 +1925,7 @@
     row.ubicados = ubic; row.p_ubicar = pUb;
 
     const delta = ubic - prevU;                    // palets ubicados en esta acción
-    if (delta !== 0) await registrarUbicadosHoy(delta);
+    if (delta !== 0) await registrarUbicadosHoy(delta, row);
 
     // Al llegar a 0 pendientes la factura se completa y se archiva sola
     if (total > 0 && pUb === 0) { await archivarYEliminar(i, { yaContabilizado: true }); return; }
@@ -1870,7 +1944,7 @@
     });
     if (insertErr) { alert('Error al archivar: ' + insertErr.message); return; }
     // Si se completa a mano, lo que quedaba pendiente cuenta como ubicado hoy
-    if (!opts.yaContabilizado && pUbicar > 0) await registrarUbicadosHoy(pUbicar);
+    if (!opts.yaContabilizado && pUbicar > 0) await registrarUbicadosHoy(pUbicar, row);
     const id = row.id;
     data.splice(i, 1);
     render();
@@ -1879,16 +1953,20 @@
     histLoaded = false;
   }
 
-  async function registrarUbicadosHoy(delta) {
+  // `info` = la fila de la expedición que movió estos palets, para el desglose por factura
+  async function registrarUbicadosHoy(delta, info) {
     const { data: existing } = await sb
-      .from('historial_ubicados_dia').select('palets_ubicados').eq('fecha', todayISO).single();
+      .from('historial_ubicados_dia').select('palets_ubicados, detalle').eq('fecha', todayISO).single();
     const current = existing?.palets_ubicados || 0;
     const newCount = Math.max(0, current + delta);
     if (!existing && newCount === 0) return;
+    const newDetalle = mergeDetalle(existing?.detalle, delta, info);
     await sb.from('historial_ubicados_dia')
-      .upsert({ fecha: todayISO, palets_ubicados: newCount }, { onConflict: 'fecha' });
+      .upsert({ fecha: todayISO, palets_ubicados: newCount, detalle: newDetalle }, { onConflict: 'fecha' });
     ubicadosHoy = newCount;
+    detalleHoy = newDetalle;
     setKpiText('kpiHoy', newCount);
+    renderKpiExtraUbicados();
     histUbicLoaded = false;
   }
 
@@ -2276,6 +2354,7 @@
           </div>
           <div class="cierre-detail">
             <div style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px;">
+              <div id="ubic-desg-${r.id}">${desgloseUbicHTML(r.detalle, r.palets_ubicados)}</div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0;">Palés</span>
                 <input class="ci ci-diapalets" type="number" min="0" value="${r.palets_ubicados}" data-orig="${r.palets_ubicados}" disabled style="width:72px;">
@@ -2340,6 +2419,9 @@
     if (badge) badge.textContent = paletsVal;
     const cached = histAllUbicados.find(r => r.id === id);
     if (cached) { cached.palets_ubicados = paletsVal; cached.nota = notaVal; }
+    // El desglose no se toca al editar el total a mano: la diferencia va a "Sin asignar"
+    const desg = document.getElementById('ubic-desg-' + id);
+    if (desg) desg.innerHTML = desgloseUbicHTML(cached?.detalle, paletsVal);
     if (fecha === todayISO) {
       ubicadosHoy = paletsVal;
       notaHoy = notaVal || '';
@@ -2357,6 +2439,7 @@
     if (fecha === todayISO) {
       ubicadosHoy = 0;
       notaHoy = '';
+      detalleHoy = [];
       setKpiText('kpiHoy', 0);
       renderKpiExtraUbicados();
     }
